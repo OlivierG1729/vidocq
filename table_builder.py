@@ -1,9 +1,141 @@
 # -*- coding: utf-8 -*-
+"""Utility functions to build tables for the Streamlit app.
 
-############################
-# Table builder            #
-#                          #
-# Last update : 2025/07/22 #
-############################
+This module currently provides helpers for the *events table*. Each
+row of this table summarizes one event found in the text and exposes
+its location, time and people involved.
+
+All processing is done locally. Summaries are generated through a
+small language model accessible via the ``ollama`` CLI (for instance
+``llama3``). If ``ollama`` is not installed or fails, a short excerpt of
+the sentence is used instead.
+"""
+
+from __future__ import annotations
+
+import subprocess
+from dataclasses import dataclass
+from typing import Dict, List
+
+import spacy
+
+try:
+    import pandas as pd
+except Exception:  # pragma: no cover - pandas might be missing
+    pd = None  # type: ignore
+
+from entity_extractor import (
+    extract_dates,
+    extract_individuals,
+    extract_locations,
+    extract_times,
+)
+
+# light French model is enough for sentence segmentation
+_nlp = spacy.load("fr_core_news_sm")
 
 
+def call_ollama(model: str, prompt: str) -> str:
+    """Call a local LLM via ``ollama`` and return the raw response."""
+    try:
+        result = subprocess.run(
+            ["ollama", "run", model],
+            input=prompt,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        output = result.stdout.strip()
+        return output
+    except Exception:
+        # If ollama is not available we return an empty string.
+        return ""
+
+
+def summarize_sentence(sent: str) -> str:
+    """Return a very short summary of ``sent`` using Ollama if possible."""
+    prompt = (
+        "Resume en quelques mots l'evenement suivant sans aucun commentaire :\n"
+        f"{sent}"
+    )
+    summary = call_ollama("llama3", prompt)
+    if not summary:
+        # fallback to a simple truncation
+        summary = sent[:50]
+    return summary.splitlines()[0].strip()
+
+
+@dataclass
+class EventRow:
+    evenement: str
+    lieu: str
+    moment: str
+    qui: str
+    document: str | None = None
+
+
+def extract_events_from_text(text: str) -> List[EventRow]:
+    """Extract a list of :class:`EventRow` from a single text."""
+    doc = _nlp(text)
+    rows: List[EventRow] = []
+
+    for sent in doc.sents:
+        sentence = sent.text.strip()
+        if not sentence:
+            continue
+
+        summary = summarize_sentence(sentence)
+        lieux = ", ".join(extract_locations(sentence))
+        dates = extract_dates(sentence)
+        times = extract_times(sentence)
+        moment = ", ".join(dates + times)
+        individus = ", ".join(extract_individuals(sentence))
+
+        if any([summary, lieux, moment, individus]):
+            rows.append(
+                EventRow(
+                    evenement=summary,
+                    lieu=lieux,
+                    moment=moment,
+                    qui=individus,
+                )
+            )
+
+    return rows
+
+
+def build_event_table(corpus: Dict[str, str]):
+    """Build a table of events for the given ``corpus``.
+
+    Parameters
+    ----------
+    corpus:
+        Mapping from document name to text.
+
+    Returns
+    -------
+    pandas.DataFrame or list of dicts
+        Table with columns ``document``, ``evenement``, ``lieu``, ``moment`` and
+        ``qui``.
+    """
+    all_rows: List[EventRow] = []
+    for name, text in corpus.items():
+        rows = extract_events_from_text(text)
+        for row in rows:
+            row.document = name
+        all_rows.extend(rows)
+
+    data = [
+        {
+            "document": r.document,
+            "evenement": r.evenement,
+            "lieu": r.lieu,
+            "moment": r.moment,
+            "qui": r.qui,
+        }
+        for r in all_rows
+    ]
+
+    if pd is not None:
+        return pd.DataFrame(data)
+    return data

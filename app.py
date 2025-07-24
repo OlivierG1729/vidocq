@@ -17,6 +17,7 @@ from concept_extractor import extract_exact_concepts, extract_tfidf_concepts, ex
 from graph_builder import build_graph
 from graph_display import display_graph, export_graph_image 
 from word_cloud_builder import generate_wordcloud
+from table_builder import build_event_table
 import io
 
 
@@ -176,10 +177,16 @@ elif view_mode == "Tables":
             st.session_state["doc_texts"] = doc_texts
 
             if "corpus" in st.session_state:
-     
+
                 st.markdown("### 📁 Sélection des documents à afficher")
                 all_doc_names = list(st.session_state["corpus"].keys())
                 selected_docs = st.multiselect("Choisissez un ou plusieurs documents :", all_doc_names)
+
+                if selected_docs and selected_unites == "Evenements":
+                    sub_corpus = {name: st.session_state["corpus"][name] for name in selected_docs}
+                    table = build_event_table(sub_corpus)
+                    st.markdown("### Tableau des événements")
+                    st.table(table)
 
 
 
