@@ -1,0 +1,2 @@
+Investigation, OSINT, IA
+Les méthodes d’investigation moderne s’appuient de plus en plus sur l’OSINT (Open Source Intelligence), qui exploite les données accessibles publiquement. L’intelligence artificielle permet d’analyser ces volumes massifs d’information pour détecter des signaux faibles et automatiser la veille stratégique.
