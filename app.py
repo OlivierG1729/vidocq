@@ -162,6 +162,8 @@ elif view_mode == "Nuage de mots":
 
 elif view_mode == "Tables":
 
+    table = None
+
     with col2:
 
         st.markdown("### 🔍 Eléments observés")
@@ -172,7 +174,7 @@ elif view_mode == "Tables":
             doc_texts = [corpus[doc] for doc in doc_names]
             unites_observees = ["Individus", "Evenements"]
             selected_unites = st.selectbox(" Choisissez le type d'élément à observer :", unites_observees)
-            
+
             st.session_state["corpus"] = corpus
             st.session_state["doc_texts"] = doc_texts
 
@@ -185,8 +187,11 @@ elif view_mode == "Tables":
                 if selected_docs and selected_unites == "Evenements":
                     sub_corpus = {name: st.session_state["corpus"][name] for name in selected_docs}
                     table = build_event_table(sub_corpus)
-                    st.markdown("### Tableau des événements")
-                    st.table(table)
+
+    if table is not None:
+        with col_graph:
+            st.markdown("### Tableau des événements")
+            st.dataframe(table, use_container_width=True, height=600)
 
 
 
