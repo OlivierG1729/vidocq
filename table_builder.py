@@ -7,8 +7,12 @@ its location, time and people involved.
 
 All processing is done locally. Summaries are generated through a
 small language model accessible via the ``ollama`` CLI (for instance
-``llama3``). If ``ollama`` is not installed or fails, a short excerpt of
-the sentence is used instead.
+``llama3``). If ``ollama`` is not installed or fails, a short summary is
+computed locally using an LSA-based algorithm provided by
+``entity_extractor.extract_events``.
+
+Note: the local fallback does not require any external API and works even
+when ``ollama`` is unavailable.
 """
 
 from __future__ import annotations
@@ -30,6 +34,7 @@ from entity_extractor import (
     extract_individuals,
     extract_locations,
     extract_times,
+    extract_events,
 )
 
 # light French model is enough for sentence segmentation
@@ -51,15 +56,19 @@ def call_ollama(model: str, prompt: str) -> str:
 
 
 def summarize_sentence(sent: str) -> str:
-    """Return a very short summary of ``sent`` using Ollama if possible."""
+    """Return a very short summary of ``sent`` using Ollama if possible.
+
+    If the call to ``ollama`` fails or returns an empty string, a local LSA
+    summarizer (``entity_extractor.extract_events``) is used as a fallback.
+    """
     prompt = (
         "Resume en quelques mots l'evenement suivant sans aucun commentaire :\n"
         f"{sent}"
     )
     summary = call_ollama("llama3", prompt)
     if not summary:
-        # fallback to a simple truncation
-        summary = sent[:50]
+        # fallback to a local LSA summarizer
+        summary = extract_events(sent)
     return summary.splitlines()[0].strip()
 
 
