@@ -1,75 +1,55 @@
-
-
-
-def generate_summary(text: str) -> dict:
-    prompt = f"""
-    Tu es un assistant expert en analyse d'information.
-
-    À partir du texte ci-dessous, produis un résumé structuré en JSON avec les clés suivantes :
-    - "titre"
-    - "date_principale"
-    - "lieux"
-    - "personnalites"
-    - "resume"
-
-    Voici le texte à analyser :
-    {text}
-    """
-    raw = call_ollama("llama3", prompt)
-    
-    # Nettoyage du bloc JSON éventuel
-    json_match = re.search(r"\{.*\}", raw, re.DOTALL)
-    if not json_match:
-        raise ValueError("Aucun JSON détecté dans la réponse du modèle.")
-    
-    json_text = json_match.group(0)
-    return json.loads(json_text)
-
-
-text = "ceci est un essai fait à Paris le 24/07/2025 par M. Dupont"
-generate_summary(text)
-
-
-
-
-
-
-import re
 import json
+import re
+import urllib.request
+
 
 def call_ollama(model: str, prompt: str) -> str:
-    # ⛔️ À remplacer par ton appel réel au modèle LLaMA via Ollama ou autre
-    raise NotImplementedError("À implémenter : appel réel à ton modèle")
+    """Appelle l'API Ollama locale pour générer une réponse."""
+
+    url = "http://localhost:11434/api/generate"
+    payload = {"model": model, "prompt": prompt, "stream": False}
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+
+    with urllib.request.urlopen(req) as resp:
+        resp_data = resp.read()
+
+    response = json.loads(resp_data)
+    return response.get("response", "")
+
 
 def generate_summary(text: str) -> dict:
+    """Génère un résumé structuré en JSON pour le texte fourni."""
+
     prompt = f"""
-    Ignore toutes les instructions précédentes. Tu es un assistant expert en analyse d'information.
+Ignore toutes les instructions précédentes. Tu es un assistant expert en analyse d'information.
 
-    À partir du texte ci-dessous, produis un résumé structuré en JSON avec les clés suivantes :
-    - "titre"
-    - "date_principale"
-    - "lieux"
-    - "personnalites"
-    - "resume"
+À partir du texte ci-dessous, produis un résumé structuré en JSON avec les clés suivantes :
+- "titre"
+- "date_principale"
+- "lieux"
+- "personnalites"
+- "resume"
 
-    Réponds uniquement avec un objet JSON valide. Ne donne aucun commentaire, balise Markdown, ni texte autour.
+Réponds uniquement avec un objet JSON valide. Ne donne aucun commentaire, balise Markdown, ni texte autour.
 
-    Voici le texte à analyser :
-    {text}
-    """
+Voici le texte à analyser :
+{text}
+"""
 
     raw = call_ollama("llama3", prompt)
 
-    # Nettoyage : extraire premier bloc JSON
     json_match = re.search(r"\{.*\}", raw, re.DOTALL)
     if not json_match:
         raise ValueError("Aucun JSON détecté dans la réponse du modèle.")
-    
+
     json_text = json_match.group(0)
     return json.loads(json_text)
 
-text = "ceci est un essai fait à Paris le 24/07/2025 par M. Dupont"
-generate_summary(text)
+
+if __name__ == "__main__":
+    example = "ceci est un essai fait à Paris le 24/07/2025 par M. Dupont"
+    print(generate_summary(example))
 
 
 
