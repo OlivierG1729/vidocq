@@ -13,7 +13,8 @@ the sentence is used instead.
 
 from __future__ import annotations
 
-import subprocess
+import time
+import requests
 from dataclasses import dataclass
 from typing import Dict, List
 
@@ -37,18 +38,15 @@ _nlp = spacy.load("fr_core_news_sm")
 
 def call_ollama(model: str, prompt: str) -> str:
     """Call a local LLM via ``ollama`` and return the raw response."""
+    url = "http://localhost:11434/api/generate"
+    payload = {"model": model, "prompt": prompt, "stream": False}
     try:
-        result = subprocess.run(
-            ["ollama", "run", model],
-            input=prompt,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        output = result.stdout.strip()
-        return output
+        resp = requests.post(url, json=payload, timeout=30)
+        resp.raise_for_status()
+        return resp.json().get("response", "").strip()
     except Exception:
-        # If ollama is not available we return an empty string.
+        # If ollama is not available or busy, wait a bit and return empty string
+        time.sleep(1)
         return ""
 
 
