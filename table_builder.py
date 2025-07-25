@@ -65,11 +65,16 @@ def summarize_sentence(sent: str) -> str:
         "Resume en quelques mots l'evenement suivant sans aucun commentaire :\n"
         f"{sent}"
     )
-    summary = call_ollama("llama3", prompt)
+    summary = call_ollama("llama3", prompt).strip()
     if not summary:
         # fallback to a local LSA summarizer
         summary = extract_events(sent)
-    return summary.splitlines()[0].strip()
+
+    summary = summary.strip()
+    lines = summary.splitlines()
+    if lines:
+        return lines[0].strip()
+    return ""
 
 
 @dataclass
