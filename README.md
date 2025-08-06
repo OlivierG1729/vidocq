@@ -36,7 +36,7 @@ L'utilisateur importe un corpus de documents (fichiers .txt pour le moment, à v
     Les événements seront alors visualisables sur une carte type OpenStreetMap, dès lors qu'une adresse est renseignée dans le document. L'utilisateur pourra aussi renseigner les adresses manquantes via une
     fenêtre   de saisie. A défaut, si seul le nom de commune est connu, l'événement sera localisé sur la mairie de cette commune. D'autres types d'informations localisantes pourront être exploitées : monuments,       lieux publics etc.
 
-  - **visualisation par timelines :** les événements extraits sont représentés âr une frise chronologique
+  - **visualisation par timelines :** les événements extraits sont représentés par une frise chronologique.
  
   Ces visualisations peuvent avoir des applications intéressantes :
 
