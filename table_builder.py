@@ -7,7 +7,7 @@ its location, time and people involved.
 
 All processing is done locally. Summaries are generated through a
 small language model accessible via the ``ollama`` CLI (for instance
-``llama3``). If ``ollama`` is not installed or fails, a short summary is
+``mistral``). If ``ollama`` is not installed or fails, a short summary is
 computed locally using an LSA-based algorithm provided by
 ``entity_extractor.extract_events``.
 
@@ -65,10 +65,10 @@ def summarize_sentence(sent: str) -> str:
         "Resume en quelques mots l'evenement suivant sans aucun commentaire :\n"
         f"{sent}"
     )
-    summary = call_ollama("llama3", prompt).strip()
-    if not summary:
-        # fallback to a local LSA summarizer
-        summary = extract_events(sent)
+    summary = call_ollama("mistral", prompt).strip()
+    # if not summary:
+    #     # fallback to a local LSA summarizer
+    #     summary = extract_events(sent)
 
     summary = summary.strip()
     lines = summary.splitlines()
@@ -151,3 +151,7 @@ def build_event_table(corpus: Dict[str, str]):
     if pd is not None:
         return pd.DataFrame(data)
     return data
+
+
+
+
