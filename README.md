@@ -1,5 +1,10 @@
 # Application VIDOCQ (VIsualisation de DOCuments par Questionnements
 
+
+
+
+
+
 L'application VIDOCQ propose différents visuels destinés à appréhender de façon rapide un corpus de documents.
 
 Actuellement, l'application propose deux fonctionnalités :
