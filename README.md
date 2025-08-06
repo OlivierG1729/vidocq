@@ -25,20 +25,30 @@ L'utilisateur importe un corpus de documents (fichiers .txt pour le moment, à v
 
 **A venir :** 
 
-- **visualisation cartographique d'événements** : extraction d'événements à partir d'un corpus de documents. Il s'agit de répondre aux questions :
-  - quoi ?
-  - où ?
-  - quand ?
-  - qui ?
+- **Implémentation de nouvelles fonctionnalités :**
 
-  Les événements seront alors visualisables sur une carte type OpenStreetMap, dès lors qu'une adresse est renseignée dans le document. L'utilisateur pourra aussi renseigner les adresses manquantes via une fenêtre   de saisie. A défaut, si seul le nom de commune est connu, l'événement sera localisé sur la mairie de cette commune. D'autres types d'informations localisantes pourront être exploitées : monuments, lieux
-  publics etc.
+  - **visualisation cartographique d'événements** : extraction d'événements à partir d'un corpus de documents. Il s'agit de répondre aux questions :
+    - quoi ?
+    - où ?
+    - quand ?
+    - qui ?
 
-- **extension à d'autres formats de fichiers** : pour le moment seuls les fichiers .txt sont autorisés. Ultérieurement, l'utilisateur pourra aussi charger des .csv et des .pdf
+    Les événements seront alors visualisables sur une carte type OpenStreetMap, dès lors qu'une adresse est renseignée dans le document. L'utilisateur pourra aussi renseigner les adresses manquantes via une
+    fenêtre   de saisie. A défaut, si seul le nom de commune est connu, l'événement sera localisé sur la mairie de cette commune. D'autres types d'informations localisantes pourront être exploitées : monuments,       lieux publics etc.
 
-- **renforcement de la liberté de l'utilisateur :** il est prévu que l'utilisateur puisse valider ou invalider certaines informations du corpus, comme les éléments identifiant les individus (nom, prénom etc.), les lieux, etc. L'idée est de créer un outil flexible et que l'utilisateur puisse toujours avoir le dernier mot.
+  - **visualisation par timelines :** les événements extraits sont représentés âr une frise chronologique
+ 
+  Ces visualisations peuvent avoir des applications intéressantes :
 
-- **et certainement d'autres fonctionnalités...**
+    - détection d'incohérences sur les dates ou les lieux mentionnés (indiivdus présents simultanément sur deux lieux distants par exemple)
+    - détection de patterns (événements ou comportements réccurents par exemple)
+
+ - **Améliorations et extensions des fonctionnalités existantes :**
+   
+   - **extension à d'autres formats de fichiers** : pour le moment seuls les fichiers .txt sont autorisés. Ultérieurement, l'utilisateur pourra aussi charger des .csv et des .pdf
+   - **renforcement de la liberté de l'utilisateur :** il est prévu que l'utilisateur puisse valider ou invalider certaines informations du corpus, comme les éléments identifiant les individus (nom, prénom etc.),     les lieux, etc. L'idée est de créer un outil flexible et que l'utilisateur puisse toujours avoir le dernier mot.
+
+
 
 
 
