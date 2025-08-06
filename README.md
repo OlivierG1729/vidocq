@@ -40,7 +40,7 @@ L'utilisateur importe un corpus de documents (fichiers .txt pour le moment, à v
  
   Ces visualisations peuvent avoir des applications intéressantes :
 
-    - détection d'incohérences sur les dates ou les lieux mentionnés (indiivdus présents simultanément sur deux lieux distants par exemple)
+    - détection d'incohérences sur les dates ou les lieux mentionnés (individus présents simultanément sur deux lieux distants par exemple)
     - détection de patterns (événements ou comportements réccurents par exemple)
 
  - **Améliorations et extensions des fonctionnalités existantes :**
