@@ -23,7 +23,20 @@ L'utilisateur importe un corpus de documents (fichiers .txt pour le moment, à v
 ![Exemple de capture d’écran](images/nuage_mots_exemple.png)
 
 
-**A venir :** l'application proposera prochainement une nouvelle fonctionnalité, dédiée à la visualisation cartographique d'événements. Il s'agit, à partir d'un document du corpus, d'extraire tous les événements relatés par le document, de détecter les lieux, moments, et individus impliqués dans ces événements. Ces événements seront alors visualisables sur une carte type OpenStreetMap. Il est nécessaire pour que cela fonctionne de disposer des adresses exactes des différents événements, ou à défaut des noms des communes dans lesquelles ces événements se sont produits (dans ce derner cas, et en l'absence d'informations supplémentaires, l'événement sera localisé sur la mairie de la commune). L'application pourra à terme s'appuyer sur d'autres types d'éléments localisants, comme le nom d'un monument ou d'un lieu public. Il est également prévu que l'utilisateur puisse lui-même renseigner l'adresse s'il en dispose. Par exemple, si le texte fait référence au domicile de M.X, alors l'utilisateur pourra renseigner dans une fenêtre de saisie l'adresse du domicile de M.X de façon à rendre possible sa visualisation sur la carte.
+**A venir :** 
+
+- **visualisation cartographique d'événements** : extraction d'événements à partir d'un corpus de documents. Il s'agit de répondre aux questions :
+  - quoi ?
+  - où ?
+  - quand ?
+  - qui ?
+  Les événements seront alors visualisables sur une carte type OpenStreetMap, dès lors qu'une adresse est renseignée dans le document. L'utilisateur pourra aussi renseigner les adresses manquantes via une fenêtre de saisie. A défaut, si seule le nom de commune est connu, l'événement sera localisé sur la mairie de cette commune. D'autres types d'informations localisantes devraient être possibles : monuments, lieux publics etc.
+
+- **extension à d'autres formats de fichiers** : pour le moment seuls les fichiers .txt sont autorisés. Ultérieurement, l'utilisateur pourra aussi charger des .csv et des .pdf
+
+- **renforcement de la liberté de l'utilisateur :** il est prévu que l'utilisateur puisse valider ou invalider certaines informations du corpus, comme les éléments identifiant les individus (nom, prénom etc.), les lieux, etc. L'idée est de créer un outil flexible et que l'utilisateur puisse toujours avoir le dernier mot.
+
+
 
 
 
