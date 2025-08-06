@@ -38,6 +38,8 @@ L'utilisateur importe un corpus de documents (fichiers .txt pour le moment, à v
 
 - **renforcement de la liberté de l'utilisateur :** il est prévu que l'utilisateur puisse valider ou invalider certaines informations du corpus, comme les éléments identifiant les individus (nom, prénom etc.), les lieux, etc. L'idée est de créer un outil flexible et que l'utilisateur puisse toujours avoir le dernier mot.
 
+- **et certainement d'autres fonctionnalités...**
+
 
 
 
