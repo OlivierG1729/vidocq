@@ -1,4 +1,4 @@
-# Application VIDOCQ (VIsualisation de DOCuments par Questionnements
+# Application VIDOCQ (VIsualisation de DOCuments par Questionnement
 
 
 ![Exemple de capture d’écran](logos/vidocq_logo.png)
