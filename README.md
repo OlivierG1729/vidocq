@@ -54,7 +54,7 @@ L'utilisateur choisit un fichier dans le corpus initialement chargé. En sélect
   Ces visualisations peuvent avoir des applications intéressantes :
 
     - détection d'incohérences sur les dates ou les lieux mentionnés (individus présents simultanément sur deux lieux distants par exemple)
-    - détection de patterns (événements ou comportements réccurents par exemple)
+    - détection de patterns (événements ou comportements réccurents par exemple) 
 
  - **Améliorations et extensions des fonctionnalités existantes :**
    
