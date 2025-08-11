@@ -32,9 +32,13 @@ L'utilisateur choisit un fichier dans le corpus initialement chargé. En sélect
 - un item *Moment* qui précise le moment auquel cet événement s'est déroulé
 - un item *Individus* qui précise les individus impliqués dans cet événement
 
+![Exemple de capture d’écran](images/synthese_exemple.png)
+
 **4. Carte d'événements**
 
 L'utilisateur choisit un fichier dans le corpus initialement chargé. En sélectionnant l'option de visualisation "Carte", on voit apparaître une carte OpenSteetMap. Sur cette carte, figurent des points rouges qui correspondent aux localisations des différents événements mentionnés dans le document. Lorsque l'utilisateur clique sur l'un de ces points rouges, une petite fenêtre apparaît à côté. Cette fenêtre comporte un résumé de l'événement, le lieu de l'événement, le moment de l'événement, et les individus impliqués dans l'événement. Si plusieurs événements se sont déroulés au même lieux, alors la fenêtre mentionne tous ces événements en précisant tous les items correspondants.
+
+![Exemple de capture d’écran](images/carte_exemple.png)
 
 **A venir :** 
 
