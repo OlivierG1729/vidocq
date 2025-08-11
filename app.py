@@ -19,6 +19,44 @@ from graph_display import display_graph, export_graph_image
 from word_cloud_builder import generate_wordcloud
 from table_builder import build_event_table
 import io
+import os
+import tempfile
+import pandas as pd
+from extraction_structuree import extraction_structuree
+from geopy.geocoders import Nominatim
+from geopy.extra.rate_limiter import RateLimiter
+import folium
+from streamlit_folium import st_folium
+from geocodage import geocoder_lieu
+
+
+# Ton extraction (tu l’as déjà pour "Synthèse")
+from extraction_structuree import extraction_structuree
+
+
+@st.cache_data(show_spinner=True)
+def run_extraction_cached(file_bytes: bytes, filename: str) -> pd.DataFrame:
+    """
+    Exécute extraction_structuree() une seule fois pour un contenu donné.
+    Clé du cache = (file_bytes, filename). Si le contenu ne change pas, pas de rerun coûteux.
+    """
+    suffix = ".txt" if filename.lower().endswith(".txt") else ".txt"
+    with tempfile.TemporaryDirectory() as tmpd:
+        input_path = os.path.join(tmpd, f"input{suffix}")
+        with open(input_path, "wb") as f:
+            f.write(file_bytes)
+
+        out_tsv = os.path.join(tmpd, "faits_extraits.tsv")
+        checkpoint_tsv = os.path.join(tmpd, "ckpt.tsv")
+
+        df = extraction_structuree(
+            nom_fichier=input_path,
+            out_tsv=out_tsv,
+            checkpoint_tsv=checkpoint_tsv,
+            keep_checkpoint=False,
+        )
+        # On retourne le DataFrame — le TSV disque est éphémère & inutile ici
+        return df
 
 
 st.set_page_config(layout="wide")
@@ -51,6 +89,7 @@ def set_cyber_style():
 
 set_cyber_style()
 
+
 # --- Bandeau VIDOCQ ---
 
 # Ouvre et redimensionne l’image au format 4:1 (ex. : 1400x350)
@@ -72,7 +111,7 @@ with col1:
 
 with col_graph:
     st.markdown("### 🌐 Visualisation")
-    view_mode = st.selectbox("Choisissez la vue :", ["Graphe des concepts", "Nuage de mots", "Tables"])
+    view_mode = st.selectbox("Choisissez la vue :", ["Graphe des concepts", "Nuage de mots", "Synthèse", "Carte"])
 
 # --- Traitement principal ---
 
@@ -160,38 +199,217 @@ elif view_mode == "Nuage de mots":
                         mime="image/png"
                     )
 
-elif view_mode == "Tables":
+elif view_mode == "Synthèse":
 
-    table = None
+    formatted_text = None
+    tsv_bytes = None
+    tsv_name = None
 
     with col2:
-
-        st.markdown("### 🔍 Eléments observés")
-
         if files:
+            # Charger la liste de documents
             corpus = load_documents(files)
-            doc_names = list(corpus.keys())
-            doc_texts = [corpus[doc] for doc in doc_names]
-            unites_observees = ["Individus", "Evenements"]
-            selected_unites = st.selectbox(" Choisissez le type d'élément à observer :", unites_observees)
-
             st.session_state["corpus"] = corpus
-            st.session_state["doc_texts"] = doc_texts
+            st.session_state["doc_texts"] = [corpus[doc] for doc in corpus]
 
-            if "corpus" in st.session_state:
+            # 1) Sélection du document
+            st.markdown("### 🔍 Sélection du document")
+            all_doc_names = list(st.session_state["corpus"].keys())
+            selected_doc = st.selectbox("📁 Choisissez un document lié :", all_doc_names)
 
-                st.markdown("### 📁 Sélection des documents à afficher")
-                all_doc_names = list(st.session_state["corpus"].keys())
-                selected_docs = st.multiselect("Choisissez un ou plusieurs documents :", all_doc_names)
+            # 2) Source des événements (uniformisée)
 
-                if selected_docs and selected_unites == "Evenements":
-                    sub_corpus = {name: st.session_state["corpus"][name] for name in selected_docs}
-                    table = build_event_table(sub_corpus)
+            st.markdown("### 📥 Source des événements")
 
-    if table is not None:
+            key_src_syn = "source_evt_synthese"
+            st.session_state.setdefault(key_src_syn, "Extraction mémoire session")
+
+            source_evt = st.radio(
+                "Choisissez la source :",
+                ["Extraction mémoire session", "Charger un TSV existant", "Calculer extraction"],
+                horizontal=False,
+                key=key_src_syn  # <- clé dédiée Synthèse
+            )     
+
+            df = None
+            if selected_doc:
+                key_df = f"df_{selected_doc}"
+                files_by_name = {f.name: f for f in files}
+                up = files_by_name.get(selected_doc)
+
+                if source_evt == "Extraction mémoire session":
+                    df = st.session_state.get(key_df)
+                    if df is None:
+                        st.warning("Aucune extraction mémorisée pour ce document.")
+                elif source_evt == "Charger un TSV existant":
+                    tsv_file = st.file_uploader("Chargez un fichier .tsv", type=["tsv"], accept_multiple_files=False)
+                    if tsv_file is not None:
+                        try:
+                            df = pd.read_csv(tsv_file, sep="\t", dtype=str, encoding="utf-8")
+                            st.session_state[key_df] = df
+                            st.success("TSV chargé et mémorisé.")
+                        except Exception as e:
+                            st.error(f"Impossible de lire le TSV : {e}")
+                else:  # "Calculer extraction"
+                    if up is None:
+                        st.error("Impossible de retrouver le fichier uploadé.")
+                    else:
+                        file_bytes = up.getvalue()
+                        with st.spinner("Extraction des événements en cours..."):
+                            df = run_extraction_cached(file_bytes, selected_doc)
+                        if df is not None:
+                            st.session_state[key_df] = df
+                            st.success("Extraction terminée et mémorisée.")
+
+            # 3) Construire et afficher la synthèse
+            if df is not None and not df.empty:
+                blocs = []
+                for _, row in df.iterrows():
+                    resume    = str(row.get("resume", "")).strip()
+                    lieu      = str(row.get("lieu", "")).strip()
+                    moment    = str(row.get("moment", "")).strip()
+                    individus = str(row.get("individus", "")).strip()
+                    blocs.append("\n".join([
+                        f"Événement : {resume}",
+                        f"Lieu : {lieu}",
+                        f"Moment : {moment}",
+                        f"Individus : {individus}",
+                    ]))
+                formatted_text = "\n\n".join(blocs) if blocs else "Aucun événement détecté."
+
+                # TSV en mémoire pour téléchargement
+                import os
+                tsv_bytes = df.to_csv(index=False, sep="\t", encoding="utf-8").encode("utf-8")
+                tsv_name = f"{os.path.splitext(selected_doc)[0]}_faits.tsv"
+
+    # Affichage central
+    if formatted_text is not None:
         with col_graph:
-            st.markdown("### Tableau des événements")
-            st.dataframe(table, use_container_width=True, height=600)
+            st.markdown("### Synthèse des événements")
+            st.text_area("", formatted_text, height=600, label_visibility="collapsed")
+
+            if tsv_bytes is not None and tsv_name is not None:
+                st.download_button(
+                    label="💾 Télécharger le TSV des événements",
+                    data=tsv_bytes,
+                    file_name=tsv_name,
+                    mime="text/tab-separated-values",
+                )
+
+
+elif view_mode == "Carte":
+
+    the_map = None
+
+    with col2:
+        if files:
+            # Charger la liste de documents
+            corpus = load_documents(files)
+            st.session_state["corpus"] = corpus
+
+            # 1) Sélection du document
+            st.markdown("### 🔍 Sélection du document")
+            all_doc_names = list(corpus.keys())
+            selected_doc = st.selectbox("📁 Choisissez un document lié :", all_doc_names)
+
+            # 2) Source des événements (uniformisée)            
+            st.markdown("### 📥 Source des événements")
+
+            key_src_map = "source_evt_carte"
+            st.session_state.setdefault(key_src_map, "Extraction mémoire session")
+
+            source_evt = st.radio(
+                "Choisissez la source :",
+                ["Extraction mémoire session", "Charger un TSV existant", "Calculer extraction"],
+                horizontal=False,
+                key=key_src_map  # <- clé dédiée Carte
+            )
+    
+            df = None
+            if selected_doc:
+                key_df = f"df_{selected_doc}"
+                files_by_name = {f.name: f for f in files}
+                up = files_by_name.get(selected_doc)
+
+                if source_evt == "Extraction mémoire session":
+                    df = st.session_state.get(key_df)
+                    if df is None:
+                        st.warning("Aucune extraction mémorisée pour ce document.")
+                elif source_evt == "Charger un TSV existant":
+                    tsv_file = st.file_uploader("Chargez un fichier .tsv", type=["tsv"], accept_multiple_files=False)
+                    if tsv_file is not None:
+                        try:
+                            df = pd.read_csv(tsv_file, sep="\t", dtype=str, encoding="utf-8")
+                            st.session_state[key_df] = df
+                            st.success("TSV chargé et mémorisé.")
+                        except Exception as e:
+                            st.error(f"Impossible de lire le TSV : {e}")
+                else:  # "Calculer extraction"
+                    if up is None:
+                        st.error("Impossible de retrouver le fichier uploadé.")
+                    else:
+                        file_bytes = up.getvalue()
+                        with st.spinner("Extraction des événements en cours..."):
+                            df = run_extraction_cached(file_bytes, selected_doc)
+                        if df is not None:
+                            st.session_state[key_df] = df
+                            st.success("Extraction terminée et mémorisée.")
+
+            # 3) Géocoder et afficher la carte
+            if df is not None and not df.empty:
+                points = {}  # key: (lat_r, lon_r) -> list of blocs
+                for _, row in df.iterrows():
+                    lieu = str(row.get("lieu", "")).strip()
+                    if not lieu:
+                        continue
+                    geo = geocoder_lieu(lieu)  # importé de geocodage.py (avec @st.cache_data)
+                    if not geo:
+                        continue
+                    lat, lon, _src = geo
+                    key = (round(lat, 5), round(lon, 5))
+                    bloc = {
+                        "resume": str(row.get("resume", "")).strip(),
+                        "lieu": lieu,
+                        "moment": str(row.get("moment", "")).strip(),
+                        "individus": str(row.get("individus", "")).strip(),
+                    }
+                    points.setdefault(key, []).append(bloc)
+
+                if not points:
+                    st.info("Aucun lieu géocodable (adresse ou ville manquante).")
+                else:
+                    # Centrer sur le 1er point
+                    (lat0, lon0) = list(points.keys())[0]
+                    the_map = folium.Map(location=[lat0, lon0], zoom_start=12, tiles="OpenStreetMap")
+
+                    # Marqueurs rouges + popup cumulés
+                    for (lat, lon), blocs in points.items():
+                        html_blocs = []
+                        for b in blocs:
+                            html_blocs.append(
+                                f"<b>Événement</b> : {b['resume']}<br>"
+                                f"<b>Lieu</b> : {b['lieu']}<br>"
+                                f"<b>Moment</b> : {b['moment']}<br>"
+                                f"<b>Individus</b> : {b['individus']}"
+                            )
+                        html_popup = "<hr>".join(html_blocs)
+
+                        folium.CircleMarker(
+                            location=[lat, lon],
+                            radius=6,
+                            color="red",
+                            fill=True,
+                            fill_color="red",
+                            fill_opacity=0.9,
+                            popup=folium.Popup(html_popup, max_width=350),
+                        ).add_to(the_map)
+
+    # Affichage de la carte
+    if the_map is not None:
+        with col_graph:
+            st.markdown("### 🗺️ Carte des événements")
+            st_folium(the_map, width=None, height=600)
+
 
 
 

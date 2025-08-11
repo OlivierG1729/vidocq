@@ -1,0 +1,7 @@
+# Ignorer les fichiers contenant des clés API
+groq_key.txt
+.env
+
+# Ignorer tout fichier temporaire Python
+__pycache__/
+*.pyc
