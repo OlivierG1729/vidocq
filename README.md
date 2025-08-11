@@ -23,7 +23,7 @@ L'utilisateur importe un corpus de documents (fichiers .txt pour le moment, à v
 ![Exemple de capture d’écran](images/nuage_mots_exemple.png)
 
 
-**3. Sytnhèse d'événements** 
+**3. Synthèse d'événements** 
 
 L'utilisateur choisit un fichier dans le corpus initialement chargé. En sélectionnant l'option de visualisation "Synthèse", on voit apparaître une extraction structurée d'événement sous la forme de blocs successifs à 4 items :
 
