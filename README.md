@@ -23,6 +23,19 @@ L'utilisateur importe un corpus de documents (fichiers .txt pour le moment, à v
 ![Exemple de capture d’écran](images/nuage_mots_exemple.png)
 
 
+**3. Synthèse d'événements** 
+
+L'utilisateur choisit un fichier dans le corpus initialement chargé. En sélectionnant l'option de visualisation "Synthèse", on voit apparaître une extraction structurée d'événement sous la forme de blocs successifs à 4 items :
+
+- un item *Evenement* qui résume en quelques mots un événement relaté dans le fichier importé
+- un item *Lieu* qui précise le lieu où s'est déroulé cet événement
+- un item *Moment* qui précise le moment auquel cet événement s'est déroulé
+- un item *Individus* qui précise les individus impliqués dans cet événement
+
+**4. Carte d'événements**
+
+L'utilisateur choisit un fichier dans le corpus initialement chargé. En sélectionnant l'option de visualisation "Carte", on voit apparaître une carte OpenSteetMap. Sur cette carte, figurent des points rouges qui correspondent aux localisations des différents événements mentionnés dans le document. Lorsque l'utilisateur clique sur l'un de ces points rouges, une petite fenêtre apparaît à côté. Cette fenêtre comporte un résumé de l'événement, le lieu de l'événement, le moment de l'événement, et les individus impliqués dans l'événement. Si plusieurs événements se sont déroulés au même lieux, alors la fenêtre mentionne tous ces événements en précisant tous les items correspondants.
+
 **A venir :** 
 
 - **Implémentation de nouvelles fonctionnalités :**
@@ -41,7 +54,7 @@ L'utilisateur importe un corpus de documents (fichiers .txt pour le moment, à v
   Ces visualisations peuvent avoir des applications intéressantes :
 
     - détection d'incohérences sur les dates ou les lieux mentionnés (individus présents simultanément sur deux lieux distants par exemple)
-    - détection de patterns (événements ou comportements réccurents par exemple)
+    - détection de patterns (événements ou comportements réccurents par exemple) 
 
  - **Améliorations et extensions des fonctionnalités existantes :**
    
