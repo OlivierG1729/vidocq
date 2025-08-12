@@ -32,7 +32,7 @@ L'utilisateur choisit un fichier dans le corpus initialement chargé. En sélect
 - un item *Moment* qui précise le moment auquel cet événement s'est déroulé
 - un item *Individus* qui précise les individus impliqués dans cet événement
 
-![Exemple de capture d’écran](images/synthese_exemple.png)
+![Exemple de capture d’écran](images/synthese_exemple2.png)
 
 **4. Carte d'événements**
 
