@@ -37,7 +37,7 @@ L'utilisateur choisit un fichier dans le corpus initialement chargé. En sélect
 - un item *Individus* qui précise les individus impliqués dans cet événement
 
 <p align="center">
-  <img src="images/synthese_exemple2" alt="Description" width="600">
+  <img src="images/synthese_exemple2.png" alt="Description" width="600">
 </p>
 
 
