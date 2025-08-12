@@ -61,21 +61,19 @@ Lorsque l'utilisateur clique sur l'un de ces points rouges, une petite fenêtre 
 
 - **Implémentation de nouvelles fonctionnalités :**
 
-  - **visualisation cartographique d'événements** : extraction d'événements à partir d'un corpus de documents. Il s'agit de répondre aux questions :
-    - quoi ?
-    - où ?
-    - quand ?
-    - qui ?
-
-    Les événements seront alors visualisables sur une carte type OpenStreetMap, dès lors qu'une adresse est renseignée dans le document. L'utilisateur pourra aussi renseigner les adresses manquantes via une
-    fenêtre   de saisie. A défaut, si seul le nom de commune est connu, l'événement sera localisé sur la mairie de cette commune. D'autres types d'informations localisantes pourront être exploitées : monuments,       lieux publics etc.
-
   - **visualisation par timelines :** les événements extraits sont représentés par une frise chronologique.
  
   Ces visualisations peuvent avoir des applications intéressantes :
 
     - détection d'incohérences sur les dates ou les lieux mentionnés (individus présents simultanément sur deux lieux distants par exemple)
-    - détection de patterns (événements ou comportements réccurents par exemple) 
+    - détection de patterns (événements ou comportements réccurents par exemple)
+ 
+  - **exploration d'images satellitaires :** les applications sont nombreuses :
+
+    - surveillance d'infrastructures : routes, aéroports, gares etc.
+    - analyse de routes et flux logistiques : observation d'axes d'acheminement maritime, terrestre ou fluvial
+    - différences d'images : la comparaison d'images d'une même zone observée à des moments différents permet de détecter de potentiels changements
+    
 
  - **Améliorations et extensions des fonctionnalités existantes :**
    
