@@ -14,7 +14,7 @@ Actuellement, l'application propose deux fonctionnalités :
 L'utilisateur importe un corpus de documents (fichiers .txt pour le moment, à venir : .csv et .pdf), renseigne des concepts par des mots-clés séparés par des virgules. Il choisit également une méthode de recherche, et ajuste les valeurs des paramètres de cette méthode. Un graphe apparait alors, composés de deux types de noeuds : les documents et les concepts. Un noeud-concept et un noeud-document sont reliés par une arête si et seulement si ce concept apparaît dans ce document. Ce graphe est dynamique, il est possible de déplacer ses noeuds, agir la taille des arêtes etc. Il est possible de le sauvegarder au format .html (pour une version dynamique) ou .png (pour une version statique).
 
 <p align="center">
-  <img src="images/graphe_exemple.png" alt="Description" width="500">
+  <img src="images/graphe_exemple.png" alt="Description" width="600">
 </p>
 
 
@@ -23,7 +23,7 @@ L'utilisateur importe un corpus de documents (fichiers .txt pour le moment, à v
 L'utilisateur importe un corpus de documents (fichiers .txt pour le moment, à venir : .csv et .pdf), sélectionne un document dans ce corpus. Un nuage de mots apparaît, permettant une vision syntéhtique du texte.Le nombre de mots du nuage est ajustable. Un prétraitement du texte (tokenisation, stop words, stemming, lemmatisation) permet de supprimer les mots non signifiants ("la", "le", "des", "avec", "et", etc.) et les redondances ("ami" et "amies", "détecter", et "détection" etc.). 
 
 <p align="center">
-  <img src="images/nuage_mots_exemple.png" alt="Description" width="500">
+  <img src="images/nuage_mots_exemple.png" alt="Description" width="600">
 </p>
 
 
@@ -37,7 +37,7 @@ L'utilisateur choisit un fichier dans le corpus initialement chargé. En sélect
 - un item *Individus* qui précise les individus impliqués dans cet événement
 
 <p align="center">
-  <img src="images/synthese_exemple2" alt="Description" width="500">
+  <img src="images/synthese_exemple2" alt="Description" width="600">
 </p>
 
 
@@ -46,14 +46,14 @@ L'utilisateur choisit un fichier dans le corpus initialement chargé. En sélect
 L'utilisateur choisit un fichier dans le corpus initialement chargé. En sélectionnant l'option de visualisation "Carte", on voit apparaître une carte OpenSteetMap. Sur cette carte, figurent des points rouges qui correspondent aux localisations des différents événements mentionnés dans le document. 
 
 <p align="center">
-  <img src="images/carte_exemple.png" alt="Description" width="500">
+  <img src="images/carte_exemple.png" alt="Description" width="600">
 </p>
 
 
 Lorsque l'utilisateur clique sur l'un de ces points rouges, une petite fenêtre apparaît à côté. Cette fenêtre comporte un résumé de l'événement, le lieu de l'événement, le moment de l'événement, et les individus impliqués dans l'événement. Si plusieurs événements se sont déroulés au même lieux, alors la fenêtre mentionne tous ces événements en précisant tous les items correspondants.
 
 <p align="center">
-  <img src="images/carte_exemple2.png" alt="Description" width="500">
+  <img src="images/carte_exemple2.png" alt="Description" width="600">
 </p>
 
 
