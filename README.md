@@ -68,11 +68,11 @@ Lorsque l'utilisateur clique sur l'un de ces points rouges, une petite fenêtre 
     - détection d'incohérences sur les dates ou les lieux mentionnés (individus présents simultanément sur deux lieux distants par exemple)
     - détection de patterns (événements ou comportements réccurents par exemple)
  
-  - **exploration d'images satellitaires :** les applications sont nombreuses :
+- **exploration d'images satellitaires :** les applications sont nombreuses :
 
-    - surveillance d'infrastructures : routes, aéroports, gares etc.
-    - analyse de routes et flux logistiques : observation d'axes d'acheminement maritime, terrestre ou fluvial
-    - différences d'images : la comparaison d'images d'une même zone observée à des moments différents permet de détecter de potentiels changements
+  - surveillance d'infrastructures : routes, aéroports, gares etc.
+  - analyse de routes et flux logistiques : observation d'axes d'acheminement maritime, terrestre ou fluvial
+  - différences d'images : la comparaison d'images d'une même zone observée à des moments différents permet de détecter de potentiels changements
     
 
  - **Améliorations et extensions des fonctionnalités existantes :**
