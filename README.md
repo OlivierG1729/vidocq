@@ -37,7 +37,7 @@ L'utilisateur choisit un fichier dans le corpus initialement chargé. En sélect
 - un item *Individus* qui précise les individus impliqués dans cet événement
 
 <p align="center">
-  <img src="images/synthese_exemple2.png" alt="Description" width="600">
+  <img src="images/synthese_exemple2.png" alt="Description" width="500">
 </p>
 
 
@@ -53,7 +53,7 @@ L'utilisateur choisit un fichier dans le corpus initialement chargé. En sélect
 Lorsque l'utilisateur clique sur l'un de ces points rouges, une petite fenêtre apparaît à côté. Cette fenêtre comporte un résumé de l'événement, le lieu de l'événement, le moment de l'événement, et les individus impliqués dans l'événement. Si plusieurs événements se sont déroulés au même lieux, alors la fenêtre mentionne tous ces événements en précisant tous les items correspondants.
 
 <p align="center">
-  <img src="images/carte_exemple2.png" alt="Description" width="600">
+  <img src="images/carte_exemple2.png" alt="Description" width="500">
 </p>
 
 
