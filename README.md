@@ -27,7 +27,7 @@ L'utilisateur importe un corpus de documents (fichiers .txt pour le moment, à v
 
 L'utilisateur choisit un fichier dans le corpus initialement chargé. En sélectionnant l'option de visualisation "Synthèse", on voit apparaître une extraction structurée d'événement sous la forme de blocs successifs à 4 items :
 
-- un item *Evenement* qui résume en quelques mots un événement relaté dans le fichier importé
+- un item *Evénement* qui résume en quelques mots un événement relaté dans le fichier importé
 - un item *Lieu* qui précise le lieu où s'est déroulé cet événement
 - un item *Moment* qui précise le moment auquel cet événement s'est déroulé
 - un item *Individus* qui précise les individus impliqués dans cet événement
