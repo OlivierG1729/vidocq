@@ -56,6 +56,13 @@ Lorsque l'utilisateur clique sur l'un de ces points rouges, une petite fenêtre 
   <img src="images/carte_exemple2.png" alt="Description" width="500">
 </p>
 
+Il est également possible d'opter pour une version dynamique de la carte des événements (globale ou par individu). Dans ce cas, l'animation peut se faire manuellement ou de manière automatique. La position courante (repérée par un point rouge) se déplace parmi l'ensemble de toutes les localisations des événements repérés dans le texte.
+
+<p align="center">
+  <img src="images/carte_exemple3.png" alt="Description" width="500">
+</p>
+
+
 
 **A venir :** 
 
