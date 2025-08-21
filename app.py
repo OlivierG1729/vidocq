@@ -1,44 +1,49 @@
-
 # -*- coding: utf-8 -*-
 
 ############################
 # Application              #
 #                          #
-# Last update : 2025/07/18 #
+# Last update : 2025/08/21 #
 ############################
 
-
-# -*- coding: utf-8 -*-
-import streamlit as st
-import streamlit.components.v1 as components
-from PIL import Image
-from data_loader import load_documents
-from concept_extractor import extract_exact_concepts, extract_tfidf_concepts, extract_semantic_concepts, extract_top_semantic_concepts, clean_text, clean_text_light
-from graph_builder import build_graph
-from graph_display import display_graph, export_graph_image 
-from word_cloud_builder import generate_wordcloud
-from table_builder import build_event_table
 import io
 import os
+import time
 import tempfile
 import pandas as pd
-from extraction_structuree import extraction_structuree
-from geopy.geocoders import Nominatim
-from geopy.extra.rate_limiter import RateLimiter
-import folium
+from PIL import Image
+
+import streamlit as st
+import streamlit.components.v1 as components
 from streamlit_folium import st_folium
-from geocodage import geocoder_lieu
+import folium  # ← nécessaire pour les gardes de type
+import pydeck as pdk
 
+from data_loader import load_documents
+from concept_extractor import (
+    extract_exact_concepts, extract_tfidf_concepts,
+    extract_semantic_concepts, extract_top_semantic_concepts,
+    clean_text, clean_text_light
+)
+from graph_builder import build_graph
+from graph_display import display_graph, export_graph_image
+from word_cloud_builder import generate_wordcloud
+from table_builder import build_event_table
 
-# Ton extraction (tu l’as déjà pour "Synthèse")
 from extraction_structuree import extraction_structuree
+from geocodage import geocoder_lieu
+from mapping_chrono import (
+    preprocess_events_global,
+    preprocess_events_by_individual,
+    build_map_static,   # Folium (statique)
+)
 
-
+# ------- Cache extraction structurée -------
 @st.cache_data(show_spinner=True)
 def run_extraction_cached(file_bytes: bytes, filename: str) -> pd.DataFrame:
     """
     Exécute extraction_structuree() une seule fois pour un contenu donné.
-    Clé du cache = (file_bytes, filename). Si le contenu ne change pas, pas de rerun coûteux.
+    Clé du cache = (file_bytes, filename).
     """
     suffix = ".txt" if filename.lower().endswith(".txt") else ".txt"
     with tempfile.TemporaryDirectory() as tmpd:
@@ -55,54 +60,46 @@ def run_extraction_cached(file_bytes: bytes, filename: str) -> pd.DataFrame:
             checkpoint_tsv=checkpoint_tsv,
             keep_checkpoint=False,
         )
-        # On retourne le DataFrame — le TSV disque est éphémère & inutile ici
         return df
 
-
+# ------- Style / mise en page -------
 st.set_page_config(layout="wide")
 
-# --- Style cyber ---
 def set_cyber_style():
     css = """
     <style>
-    # .stApp { background-color: #000c15; color: #00ffcc; font-family: 'Courier New', monospace; }
     .stApp { background: linear-gradient(to bottom, #002a2d, #d2ac7a); color: #00ffcc; font-family: 'Courier New', monospace; }
-    # img { box-shadow: 0px 30px 80px -10px rgba(255, 200, 160, 0.5);  /* couleur saumon douce */ border-radius: 10px; }
-    # h1,h2,h4,h5,h6 { color: #39ff14; text-shadow: 0 0 5px #39ff14; }
     h1,h2,h3,h4,h5,h6 {
-    color: #003300; /* texte vert foncé */
-    text-shadow:
+      color: #003300;
+      text-shadow:
         -1px -1px 0 #FFA07A,
-            1px -1px 0 #FFA07A,
+         1px -1px 0 #FFA07A,
         -1px  1px 0 #FFA07A,
-            1px  1px 0 #FFA07A; /* contour saumon */
-    background-color: transparent; /* fond invisible */
-    border: none; /* pas de contour */
-    padding: 0;
-    margin-bottom: 12px; }
+         1px  1px 0 #FFA07A;
+      background-color: transparent;
+      border: none;
+      padding: 0;
+      margin-bottom: 12px;
+    }
     label, .stMarkdown, .stSelectbox { color: #00ffcc !important; }
     .stTextInput input { color: black !important; background-color: white !important; }
-    .stButton>button { background-color: #00ffcc; color: black; border-radius: 8px; font-weight: bold; }    
+    .stButton>button { background-color: #00ffcc; color: black; border-radius: 8px; font-weight: bold; }
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
 
 set_cyber_style()
 
-
-# --- Bandeau VIDOCQ ---
-
-# Ouvre et redimensionne l’image au format 4:1 (ex. : 1400x350)
-logo_vidocq = Image.open("Logos/vidocq4.png")
-logo_vidocq_resized = logo_vidocq.resize((1400, 500))  # Largeur 4x plus grande que hauteur
-
-# Affiche dans Streamlit
-st.image(logo_vidocq_resized)
-
+# ------- Bandeau -------
+try:
+    logo_vidocq = Image.open("Logos/vidocq4.png")
+    logo_vidocq_resized = logo_vidocq.resize((1400, 500))
+    st.image(logo_vidocq_resized)
+except Exception:
+    st.info("Logo introuvable (Logos/vidocq4.png).")
 st.markdown("---")
 
-
-# --- Disposition principale ---
+# ------- Disposition principale -------
 col1, col_graph, col2 = st.columns([4, 8, 4])
 
 with col1:
@@ -113,13 +110,165 @@ with col_graph:
     st.markdown("### 🌐 Visualisation")
     view_mode = st.selectbox("Choisissez la vue :", ["Graphe des concepts", "Nuage de mots", "Synthèse", "Carte"])
 
-# --- Traitement principal ---
+# ------- Helpers locaux -------
+def _list_individus(df_: pd.DataFrame):
+    s = set()
+    if "individus" not in df_.columns:
+        return []
+    for val in df_["individus"]:
+        for p in str(val).split(";"):
+            p = p.strip()
+            if p:
+                s.add(p)
+    return sorted(s)
 
-# 🔍 Cas Graphe des concepts
+def _get_mapbox_style():
+    # Utilise le fond mapbox si la clé est dispo, sinon None (fond neutre)
+    token = None
+    try:
+        token = st.secrets.get("MAPBOX_API_KEY")
+    except Exception:
+        pass
+    token = token or os.environ.get("MAPBOX_API_KEY")
+    if token:
+        os.environ["MAPBOX_API_KEY"] = token
+        return "mapbox://styles/mapbox/light-v11"
+    return None
+
+@st.cache_data
+def build_points_df_cached(events_key: str, events: list, _geocoder_lieu):
+    """
+    Construit le DataFrame pydeck des points géocodés une seule fois
+    par (doc/mode/individu). 'events_key' doit changer quand l'entrée change.
+    """
+    rows = []
+    for i, ev in enumerate(events, start=1):
+        lieu = (ev.get("lieu") or "").strip()
+        if not lieu:
+            continue
+        g = _geocoder_lieu(lieu)  # ← on utilise l'arg underscore
+        if not g:
+            continue
+        lat, lon, _ = g
+        rows.append({
+            "idx": i,
+            "lat": lat,
+            "lon": lon,
+            "resume": ev.get("resume",""),
+            "lieu": lieu,
+            "moment": ev.get("moment",""),
+            "individus": ev.get("individus",""),
+        })
+    return pd.DataFrame(rows)
+
+
+
+def _build_pydeck_dynamic_from_df(df_points: pd.DataFrame, idx_zero_based: int, center: tuple[float,float], zoom: int):
+    """
+    Vue dynamique pydeck :
+    - Tous les points (gris)
+    - Point courant (rouge, plus gros)
+    - Taille min/max en pixels pour rester visible au dézoom
+    """
+    if df_points.empty:
+        return None
+
+    current_pos = idx_zero_based + 1  # 1..N
+    max_idx = int(df_points["idx"].max())
+    if current_pos > max_idx:
+        current_pos = 1
+
+    df_points = df_points.copy()
+    df_points["is_current"] = (df_points["idx"] == current_pos)
+
+    view_state = pdk.ViewState(latitude=center[0], longitude=center[1], zoom=int(zoom), bearing=0, pitch=0)
+
+    # Tous les points
+    layer_base = pdk.Layer(
+        "ScatterplotLayer",
+        data=df_points,
+        get_position='[lon, lat]',
+        # Taille de base en mètres (utilisée quand on zoome)
+        get_radius=50,
+        # Garde-fous en pixels pour rester visible au dézoom
+        radius_min_pixels=3,
+        radius_max_pixels=30,
+        stroked=True,
+        get_line_color=[0, 0, 0, 160],
+        line_width_min_pixels=1,
+        get_fill_color=[120, 120, 120, 180],
+        pickable=True,
+        # (optionnel) fixed radius in meters (default); on laisse le défaut
+        # radius_units="meters",
+    )
+
+    # Point courant (plus visible)
+    layer_current = pdk.Layer(
+        "ScatterplotLayer",
+        data=df_points[df_points["is_current"]],
+        get_position='[lon, lat]',
+        get_radius=140,
+        radius_min_pixels=6,
+        radius_max_pixels=60,
+        stroked=True,
+        get_line_color=[0, 0, 0, 200],
+        line_width_min_pixels=1,
+        get_fill_color=[220, 20, 60, 230],  # rouge
+        pickable=True,
+    )
+
+    tooltip = {
+        "html": "<b>#{idx}</b><br/><b>Événement:</b> {resume}<br/><b>Lieu:</b> {lieu}<br/><b>Moment:</b> {moment}<br/><b>Individus:</b> {individus}",
+        "style": {"backgroundColor": "white", "color": "black"}
+    }
+
+    return pdk.Deck(
+        layers=[layer_base, layer_current],
+        initial_view_state=view_state,
+        map_style=_get_mapbox_style(),
+        tooltip=tooltip,
+    )
+
+
+
+# ------- Fallback Folium sûr (évite NoneType.get_root) -------
+def _fallback_folium_map_from_events(events: list) -> folium.Map:
+    """
+    Crée une carte Folium même si la liste d'événements est vide ou non géocodable.
+    Tente de calculer un centre moyen, sinon Paris.
+    """
+    coords = []
+    for ev in events or []:
+        lieu = (ev.get("lieu") or "").strip()
+        if not lieu:
+            continue
+        g = geocoder_lieu(lieu)
+        if g:
+            lat, lon, _ = g
+            coords.append((lat, lon))
+
+    if coords:
+        lat_c = sum(lat for lat, _ in coords) / len(coords)
+        lon_c = sum(lon for _, lon in coords) / len(coords)
+        c = (lat_c, lon_c)
+    else:
+        c = (48.8566, 2.3522)  # Paris
+
+    m = folium.Map(location=c, zoom_start=12, control_scale=True, tiles="OpenStreetMap")
+    if coords:
+        for lat, lon in coords:
+            folium.CircleMarker(location=(lat, lon), radius=5, fill=True).add_to(m)
+    else:
+        folium.Marker(location=c, tooltip="Aucune donnée", popup="Aucune donnée à afficher").add_to(m)
+
+    folium.LayerControl().add_to(m)
+    return m
+
+# ------- Traitement principal -------
+
+# 🔍 Graphe des concepts
 if view_mode == "Graphe des concepts":
-
     with col2:
-            
         st.markdown("### 🔍 Méthode de recherche")
         search_method = st.selectbox("Méthode utilisée :", ["Recherche exacte", "Recherche sémantique", "Top recherche sémantique", "Recherche par fréquence"])
 
@@ -137,17 +286,15 @@ if view_mode == "Graphe des concepts":
             keywords_input = st.text_input("Entrez les concepts (séparés par des virgules)")
 
     if submitted and keywords_input and files:
-    # if keywords_input and files:
         corpus = load_documents(files)
         keywords = [k.strip().lower() for k in keywords_input.split(",")]
-
         doc_names = list(corpus.keys())
         doc_texts = [corpus[doc] for doc in doc_names]
 
         st.session_state["corpus"] = corpus
         st.session_state["doc_texts"] = doc_texts
+        st.session_state["last_keywords"] = keywords_input
 
-        # Traitement selon méthode choisie
         if search_method == "Recherche exacte":
             concept_to_docs = extract_exact_concepts(corpus, keywords)
         elif search_method == "Recherche sémantique":
@@ -158,38 +305,31 @@ if view_mode == "Graphe des concepts":
             concept_to_docs = extract_tfidf_concepts(corpus, keywords, threshold)
 
         st.session_state["concept_to_docs"] = concept_to_docs
-        st.session_state["filtered"] = concept_to_docs    
+        st.session_state["filtered"] = concept_to_docs
 
-# ☁️ Cas Nuage de mots (pas besoin de keywords)
+# ☁️ Nuage de mots
 elif view_mode == "Nuage de mots":
-
     with col2:
-
         st.markdown("### 🔍 Sélection du document")
-
         if files:
             corpus = load_documents(files)
             doc_names = list(corpus.keys())
             doc_texts = [corpus[doc] for doc in doc_names]
             selected_doc = st.selectbox("📁 Choisissez un document lié :", doc_names)
-            
+
             st.session_state["corpus"] = corpus
             st.session_state["doc_texts"] = doc_texts
 
-            # 🔧 Curseur pour choisir le nombre de mots à afficher
             max_words = st.slider("🔢 Nombre de mots dans le nuage", min_value=1, max_value=300, value=10, step=1)
 
             if "corpus" in st.session_state and selected_doc:
                 doc_text = st.session_state["corpus"][selected_doc]
-
-                # fig, wc = generate_wordcloud(doc_text)
                 fig, wc = generate_wordcloud(doc_text, max_words=max_words)
 
                 with col_graph:
                     st.markdown("### ☁️ Nuage de mots du document")
                     st.pyplot(fig)
 
-                    # 📥 Bouton de téléchargement
                     img_bytes = io.BytesIO()
                     wc.to_image().save(img_bytes, format="PNG")
                     st.download_button(
@@ -199,37 +339,31 @@ elif view_mode == "Nuage de mots":
                         mime="image/png"
                     )
 
+# 🧾 Synthèse
 elif view_mode == "Synthèse":
-
     formatted_text = None
     tsv_bytes = None
     tsv_name = None
 
     with col2:
         if files:
-            # Charger la liste de documents
             corpus = load_documents(files)
             st.session_state["corpus"] = corpus
             st.session_state["doc_texts"] = [corpus[doc] for doc in corpus]
 
-            # 1) Sélection du document
             st.markdown("### 🔍 Sélection du document")
             all_doc_names = list(st.session_state["corpus"].keys())
             selected_doc = st.selectbox("📁 Choisissez un document lié :", all_doc_names)
 
-            # 2) Source des événements (uniformisée)
-
             st.markdown("### 📥 Source des événements")
-
             key_src_syn = "source_evt_synthese"
             st.session_state.setdefault(key_src_syn, "Extraction mémoire session")
-
             source_evt = st.radio(
                 "Choisissez la source :",
                 ["Extraction mémoire session", "Charger un TSV existant", "Calculer extraction"],
                 horizontal=False,
-                key=key_src_syn  # <- clé dédiée Synthèse
-            )     
+                key=key_src_syn
+            )
 
             df = None
             if selected_doc:
@@ -250,7 +384,7 @@ elif view_mode == "Synthèse":
                             st.success("TSV chargé et mémorisé.")
                         except Exception as e:
                             st.error(f"Impossible de lire le TSV : {e}")
-                else:  # "Calculer extraction"
+                else:  # Calculer extraction
                     if up is None:
                         st.error("Impossible de retrouver le fichier uploadé.")
                     else:
@@ -261,7 +395,6 @@ elif view_mode == "Synthèse":
                             st.session_state[key_df] = df
                             st.success("Extraction terminée et mémorisée.")
 
-            # 3) Construire et afficher la synthèse
             if df is not None and not df.empty:
                 blocs = []
                 for _, row in df.iterrows():
@@ -277,12 +410,9 @@ elif view_mode == "Synthèse":
                     ]))
                 formatted_text = "\n\n".join(blocs) if blocs else "Aucun événement détecté."
 
-                # TSV en mémoire pour téléchargement
-                import os
                 tsv_bytes = df.to_csv(index=False, sep="\t", encoding="utf-8").encode("utf-8")
                 tsv_name = f"{os.path.splitext(selected_doc)[0]}_faits.tsv"
 
-    # Affichage central
     if formatted_text is not None:
         with col_graph:
             st.markdown("### Synthèse des événements")
@@ -296,35 +426,51 @@ elif view_mode == "Synthèse":
                     mime="text/tab-separated-values",
                 )
 
-
+# 🗺️ Carte (statique Folium / dynamique pydeck)
 elif view_mode == "Carte":
 
     the_map = None
 
     with col2:
         if files:
-            # Charger la liste de documents
             corpus = load_documents(files)
             st.session_state["corpus"] = corpus
 
-            # 1) Sélection du document
             st.markdown("### 🔍 Sélection du document")
             all_doc_names = list(corpus.keys())
             selected_doc = st.selectbox("📁 Choisissez un document lié :", all_doc_names)
 
-            # 2) Source des événements (uniformisée)            
             st.markdown("### 📥 Source des événements")
-
             key_src_map = "source_evt_carte"
             st.session_state.setdefault(key_src_map, "Extraction mémoire session")
-
             source_evt = st.radio(
                 "Choisissez la source :",
                 ["Extraction mémoire session", "Charger un TSV existant", "Calculer extraction"],
                 horizontal=False,
-                key=key_src_map  # <- clé dédiée Carte
+                key=key_src_map
             )
-    
+
+            st.markdown("### 🧭 Mode d’affichage")
+            key_mode_map = "mode_carte"
+            st.session_state.setdefault(key_mode_map, "Trajectoire globale")
+            mode_affichage = st.radio(
+                "Choisissez le mode :",
+                ["Trajectoire globale", "Trajectoires par individu"],
+                horizontal=False,
+                key=key_mode_map,
+            )
+
+            st.markdown("### 🎬 Visualisation")
+            key_visu_map = "visu_carte"
+            st.session_state.setdefault(key_visu_map, "Statique")
+            mode_visu = st.radio(
+                "Type d’affichage :",
+                ["Statique", "Dynamique"],
+                horizontal=True,
+                key=key_visu_map,
+            )
+
+            # Récupération du DataFrame d'événements
             df = None
             if selected_doc:
                 key_df = f"df_{selected_doc}"
@@ -344,7 +490,7 @@ elif view_mode == "Carte":
                             st.success("TSV chargé et mémorisé.")
                         except Exception as e:
                             st.error(f"Impossible de lire le TSV : {e}")
-                else:  # "Calculer extraction"
+                else:  # Calculer extraction
                     if up is None:
                         st.error("Impossible de retrouver le fichier uploadé.")
                     else:
@@ -355,67 +501,177 @@ elif view_mode == "Carte":
                             st.session_state[key_df] = df
                             st.success("Extraction terminée et mémorisée.")
 
-            # 3) Géocoder et afficher la carte
-            if df is not None and not df.empty:
-                points = {}  # key: (lat_r, lon_r) -> list of blocs
-                for _, row in df.iterrows():
-                    lieu = str(row.get("lieu", "")).strip()
-                    if not lieu:
-                        continue
-                    geo = geocoder_lieu(lieu)  # importé de geocodage.py (avec @st.cache_data)
-                    if not geo:
-                        continue
-                    lat, lon, _src = geo
-                    key = (round(lat, 5), round(lon, 5))
-                    bloc = {
-                        "resume": str(row.get("resume", "")).strip(),
-                        "lieu": lieu,
-                        "moment": str(row.get("moment", "")).strip(),
-                        "individus": str(row.get("individus", "")).strip(),
-                    }
-                    points.setdefault(key, []).append(bloc)
-
-                if not points:
-                    st.info("Aucun lieu géocodable (adresse ou ville manquante).")
+            # Construction de la carte
+            if df is None:
+                st.info("Aucune donnée d'événements pour ce document (choisissez une autre source ou lancez l'extraction).")
+                the_map = None
+            elif df.empty:
+                st.info("Le DataFrame d'événements est vide.")
+                the_map = None
+            else:
+                # Préparer les événements (globaux ou individuels)
+                if mode_affichage == "Trajectoire globale":
+                    events = preprocess_events_global(df)
+                    idx_key = f"idx_dyn_{selected_doc}_global"
+                    selected_person = ""
                 else:
-                    # Centrer sur le 1er point
-                    (lat0, lon0) = list(points.keys())[0]
-                    the_map = folium.Map(location=[lat0, lon0], zoom_start=12, tiles="OpenStreetMap")
+                    all_inds = _list_individus(df)
+                    if not all_inds:
+                        st.info("Aucun individu détecté dans ce document.")
+                        events = []
+                        idx_key = f"idx_dyn_{selected_doc}_none"
+                        selected_person = ""
+                    else:
+                        selected_person = st.selectbox("👤 Sélectionnez un individu :", all_inds)
+                        events = preprocess_events_by_individual(df, selected_person)
+                        idx_key = f"idx_dyn_{selected_doc}_{selected_person}"
 
-                    # Marqueurs rouges + popup cumulés
-                    for (lat, lon), blocs in points.items():
-                        html_blocs = []
-                        for b in blocs:
-                            html_blocs.append(
-                                f"<b>Événement</b> : {b['resume']}<br>"
-                                f"<b>Lieu</b> : {b['lieu']}<br>"
-                                f"<b>Moment</b> : {b['moment']}<br>"
-                                f"<b>Individus</b> : {b['individus']}"
+                # --- STATIQUE (Folium) : capture de la vue pour dynamique ---
+                if mode_visu == "Statique":
+                    # build_map_static peut (selon implémentation) renvoyer None → fallback garanti
+                    try:
+                        the_map = build_map_static(events, geocoder_lieu, point_color="red", label_dx=12, label_dy=-12)
+                    except Exception as e:
+                        st.exception(e)
+                        the_map = None
+
+                    if not isinstance(the_map, (folium.Map, folium.Figure)):
+                        # Toujours fournir une Folium.Map valide
+                        the_map = _fallback_folium_map_from_events(events)
+
+                    with col_graph:
+                        st.markdown("### 🗺️ Carte des événements")
+                        # st_folium uniquement avec un objet Folium valide
+                        if isinstance(the_map, (folium.Map, folium.Figure)):
+                            ret = st_folium(the_map, width=None, height=600, key=f"map_static_{idx_key}")
+                            # Protéger l'accès à ret
+                            if isinstance(ret, dict):
+                                center_key = f"center_{idx_key}"
+                                zoom_key   = f"zoom_{idx_key}"
+                                try:
+                                    c = ret.get("center") or {}
+                                    z = ret.get("zoom")
+                                    if "lat" in c and "lng" in c and z is not None:
+                                        st.session_state[center_key] = (float(c["lat"]), float(c["lng"]))
+                                        st.session_state[zoom_key] = int(z)
+                                except Exception:
+                                    pass
+                        else:
+                            st.error("La carte n'a pas pu être générée (objet invalide).")
+
+                # --- DYNAMIQUE (pydeck) : fluide + Animation Start/Stop par time.sleep ---
+                else:
+                    st.session_state.setdefault(idx_key, 0)
+                    center_key = f"center_{idx_key}"
+                    zoom_key   = f"zoom_{idx_key}"
+
+                    # Flags animation + anti-tick CE run
+                    anim_run_key   = f"anim_run_{idx_key}"       # bool
+                    anim_delay_key = f"anim_delay_{idx_key}"     # int (ms)
+                    anim_skip_key  = f"anim_skip_once_{idx_key}" # bool (ne pas avancer ce run)
+
+                    st.session_state.setdefault(anim_run_key, False)
+                    st.session_state.setdefault(anim_delay_key, 1000)
+                    st.session_state.setdefault(anim_skip_key, False)
+
+                    # Si pas de vue capturée en statique : centre/zoom une fois
+                    if center_key not in st.session_state or zoom_key not in st.session_state:
+                        coords = []
+                        for ev in events or []:
+                            lieu = (ev.get("lieu") or "").strip()
+                            if not lieu:
+                                continue
+                            g = geocoder_lieu(lieu)
+                            if g:
+                                lat, lon, _ = g
+                                coords.append((lat, lon))
+                        if coords:
+                            lat_c = sum(lat for lat, _ in coords) / len(coords)
+                            lon_c = sum(lon for _, lon in coords) / len(coords)
+                            st.session_state[center_key] = (lat_c, lon_c)
+                            st.session_state[zoom_key] = 12
+                        else:
+                            st.session_state[center_key] = (48.8566, 2.3522)
+                            st.session_state[zoom_key] = 12
+
+                    # Contrôles ⬅️ ➡️ (une seule avance)
+                    col_prev, col_pos, col_next = st.columns([1,2,1])
+                    with col_prev:
+                        if st.button("⬅️", help="Position précédente", key=f"prev_{idx_key}"):
+                            st.session_state[idx_key] = max(0, st.session_state[idx_key] - 1)
+                            st.session_state[anim_skip_key] = True   # pas d’avance auto CE run
+                    with col_next:
+                        if st.button("➡️", help="Position suivante", key=f"next_{idx_key}"):
+                            st.session_state[idx_key] = min(len(events) - 1, st.session_state[idx_key] + 1)
+                            st.session_state[anim_skip_key] = True
+                    with col_pos:
+                        st.write(f"Position : **{st.session_state[idx_key] + 1} / {len(events)}**")
+
+                    # Animation Start/Stop + délai (le slider NE lance rien)
+                    st.markdown("### ▶️ Animation")
+                    col_start, col_delay, col_stop = st.columns([1,3,1])
+                    with col_start:
+                        if st.button("▶️", key=f"start_{idx_key}"):
+                            st.session_state[anim_run_key] = True
+                            st.session_state[anim_skip_key] = True   # pas d’avance immédiate CE run
+                            st.rerun()
+                    with col_stop:
+                        if st.button("⏹️", key=f"stop_{idx_key}"):
+                            st.session_state[anim_run_key] = False
+                            st.session_state[anim_skip_key] = True
+                            st.rerun()
+                    with col_delay:
+                        st.slider(
+                            "Délai (ms)",
+                            min_value=50, max_value=3000, step=50,
+                            key=anim_delay_key,
+                            help="Temps entre deux positions pendant l'animation"
+                        )
+
+                    # DataFrame points (géocodé en cache)
+                    person_part = selected_person if (mode_affichage != "Trajectoire globale") else ""
+                    events_key = f"{selected_doc}|{mode_affichage}|{person_part}|{len(events)}"
+                    df_points = build_points_df_cached(events_key, events, geocoder_lieu)
+
+                    if df_points.empty:
+                        the_map = None
+                        st.info("Aucun événement géocodable trouvé.")
+                    else:
+                        # Clamp index
+                        total_pts = len(df_points)
+                        if total_pts == 0:
+                            the_map = None
+                        else:
+                            if st.session_state[idx_key] >= total_pts:
+                                st.session_state[idx_key] = 0
+
+                            deck = _build_pydeck_dynamic_from_df(
+                                df_points,
+                                idx_zero_based=st.session_state[idx_key],
+                                center=st.session_state[center_key],
+                                zoom=st.session_state[zoom_key],
                             )
-                        html_popup = "<hr>".join(html_blocs)
 
-                        folium.CircleMarker(
-                            location=[lat, lon],
-                            radius=6,
-                            color="red",
-                            fill=True,
-                            fill_color="red",
-                            fill_opacity=0.9,
-                            popup=folium.Popup(html_popup, max_width=350),
-                        ).add_to(the_map)
+                            with col_graph:
+                                st.markdown("### 🗺️ Carte des événements (dynamique)")
+                                # clé STABLE → pas de “saut” de canvas
+                                if deck is not None:
+                                    st.pydeck_chart(deck, use_container_width=True, key=f"deck_{idx_key}")
+                                else:
+                                    st.info("Impossible de construire la vue dynamique (aucun point).")
 
-    # Affichage de la carte
-    if the_map is not None:
-        with col_graph:
-            st.markdown("### 🗺️ Carte des événements")
-            st_folium(the_map, width=None, height=600)
+                            # Boucle d'animation pilotée par time.sleep → rerun programmé
+                            if st.session_state[anim_run_key] and total_pts > 1:
+                                if st.session_state[anim_skip_key]:
+                                    # On consomme le skip (clic récent) sans avancer CE run
+                                    st.session_state[anim_skip_key] = False
+                                else:
+                                    time.sleep(int(st.session_state[anim_delay_key]) / 1000.0)
+                                    st.session_state[idx_key] = (st.session_state[idx_key] + 1) % total_pts
+                                st.rerun()
 
-
-
-
-# --- Affichage du graphe + texte sélectionné ---
+# ------- Affichage du graphe interactif + visionnage texte -------
 if view_mode == "Graphe des concepts":
-
     if "filtered" in st.session_state:
         G = build_graph(st.session_state["filtered"])
         html_path = display_graph(G)
@@ -425,7 +681,8 @@ if view_mode == "Graphe des concepts":
                 html_content = f.read()
             components.html(html_content, height=600)
 
-            concepts_slug = "_".join([k.strip().lower().replace(" ", "_") for k in keywords_input.split(",")])
+            concepts_slug = "_".join([k.strip().lower().replace(" ", "_")
+                                      for k in (st.session_state.get("last_keywords","") or "").split(",")]) if "last_keywords" in st.session_state else "concepts"
             file_name_html = f"graphe_{concepts_slug}.html"
             file_name_png = f"graphe_{concepts_slug}.PNG"
 
@@ -437,37 +694,31 @@ if view_mode == "Graphe des concepts":
                     mime="text/html"
                 )
 
-            # 🔁 Générer l'image statique du graphe
             graph_fig = export_graph_image(G)
             img_buffer = io.BytesIO()
             graph_fig.savefig(img_buffer, format="PNG")
-
-            # 📥 Bouton de téléchargement PNG            
             st.download_button(
                 label="🖼️ Télécharger le graphe statique (.png)",
                 data=img_buffer.getvalue(),
                 file_name=file_name_png,
                 mime="image/png"
-)
+            )
 
-        # ✅ Documents liés uniquement
         linked_docs = sorted(set(doc for docs in st.session_state["filtered"].values() for doc in docs))
 
         with col2:
             st.markdown("### 💬 Visionnage des documents du graphe")
             selected_doc = st.selectbox("📁 Choisissez un document lié :", linked_docs)
 
-        # with col_graph:
-            if selected_doc:
-                st.markdown(
-                    f"""
-                    <div style='background-color:white; color:black; padding:1em; height:200px; overflow-y:scroll; border-radius:10px;'>
-                        <pre style='white-space: pre-wrap; word-wrap: break-word;'>{st.session_state["corpus"][selected_doc]}</pre>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+        if selected_doc:
+            st.markdown(
+                f"""
+                <div style='background-color:white; color:black; padding:1em; height:200px; overflow-y:scroll; border-radius:10px;'>
+                    <pre style='white-space: pre-wrap; word-wrap: break-word;'>{st.session_state["corpus"][selected_doc]}</pre>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
     else:
         with col_graph:
             st.info("Veuillez charger des documents, entrer des concepts et valider les paramètres pour afficher le graphe.")
-
