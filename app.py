@@ -9,6 +9,7 @@
 
 
 # -*- coding: utf-8 -*-
+# Ceci est un test
 import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image
