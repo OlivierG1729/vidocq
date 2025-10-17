@@ -7,6 +7,11 @@
 ############################
 
 
+import json
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, Optional
+
 import spacy
 import re
 from spacy.lang.fr.stop_words import STOP_WORDS
@@ -14,16 +19,74 @@ from dateparser.search import search_dates
 from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lsa import LsaSummarizer
-from dateparser.search import search_dates
 
 
-nlp = spacy.load("fr_core_news_md")  # Ou "lg" pour plus de puissance
+nltk_model = "fr_core_news_md"
+nlp = spacy.load(nltk_model)  # Ou "lg" pour plus de puissance
+
+CACHE_PATH = Path("output/entity_cache.json")
 
 EXCLUSION_TERMS = {
     "affaire", "projet", "mission", "procès", "ministère", "dossier",
     "groupe", "commission", "association", "organisation",
     "entreprise", "rapport", "syndicat", "déclaration", "campagne"
 }
+
+
+@dataclass
+class EntityRecord:
+    individuals: list
+    locations: list
+    addresses: list
+    dates: list
+    times: list
+    summary: str
+    hash: str = ""
+
+    def to_dict(self) -> Dict[str, object]:
+        return {
+            "individuals": self.individuals,
+            "locations": self.locations,
+            "addresses": self.addresses,
+            "dates": self.dates,
+            "times": self.times,
+            "summary": self.summary,
+            "hash": self.hash,
+        }
+
+
+class EntityCache:
+    def __init__(self, path: Path = CACHE_PATH) -> None:
+        self.path = path
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._cache: Dict[str, Dict[str, object]] = self._load()
+
+    def _load(self) -> Dict[str, Dict[str, object]]:
+        if self.path.exists():
+            with open(self.path, "r", encoding="utf-8") as fh:
+                return json.load(fh)
+        return {}
+
+    def _save(self) -> None:
+        with open(self.path, "w", encoding="utf-8") as fh:
+            json.dump(self._cache, fh, ensure_ascii=False, indent=2)
+
+    def get(self, document_id: str) -> Optional[Dict[str, object]]:
+        return self._cache.get(document_id)
+
+    def store(self, document_id: str, record: EntityRecord) -> None:
+        self._cache[document_id] = record.to_dict()
+        self._save()
+
+    def get_or_create(self, document_id: str, document_hash: str, text: str) -> Dict[str, object]:
+        cached = self.get(document_id)
+        if cached and cached.get("hash") == document_hash:
+            return cached
+
+        record = extract_all_entities(text)
+        record.hash = document_hash
+        self.store(document_id, record)
+        return record.to_dict()
 
 def is_valid_person(name):
     name_clean = name.strip()
@@ -95,7 +158,6 @@ def extract_dates(text):
     return []
 
 # ✅ Extraction des horaires
-import re
 
 def extract_times(text):
     """
@@ -147,20 +209,36 @@ def extract_events(text, nb_sentences=1):
     return " ".join(str(s) for s in summary)
 
 
-text = "Le 21 juin 2023 à 9h15, Jean Dupont est arrivé au 18 rue des Lilas, Paris. Il a assisté à une réunion confidentielle dans le cadre de l’affaire X."
+def extract_all_entities(text: str, nb_sentences: int = 1) -> EntityRecord:
+    return EntityRecord(
+        individuals=extract_individuals(text),
+        locations=extract_locations(text),
+        addresses=extract_addresses(text),
+        dates=extract_dates(text),
+        times=extract_times(text),
+        summary=extract_events(text, nb_sentences),
+    )
 
-print("Individus :", extract_individuals(text))
-print("Adresses :", extract_addresses(text))
-print("Dates :", extract_dates(text))
-print("Horaires :", extract_times(text))
-print("Lieux :", extract_locations(text))
-print("Résumé d’événement :", extract_events(text))
+
+_ENTITY_CACHE: Optional[EntityCache] = None
 
 
+def get_entity_cache() -> EntityCache:
+    global _ENTITY_CACHE
+    if _ENTITY_CACHE is None:
+        _ENTITY_CACHE = EntityCache()
+    return _ENTITY_CACHE
 
-# text = """
-# Jean a quitté son domicile à 9h15. Il est revenu en fin de matinée, puis reparti vers minuit.
-# Martine a été vue au crépuscule près de la gare, l'agent L était actif en soirée.
-# """
 
-# print("Horaires détectés :", extract_times(text))
+__all__ = [
+    "EntityCache",
+    "EntityRecord",
+    "extract_all_entities",
+    "extract_addresses",
+    "extract_dates",
+    "extract_events",
+    "extract_individuals",
+    "extract_locations",
+    "extract_times",
+    "get_entity_cache",
+]

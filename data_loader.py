@@ -30,6 +30,8 @@ def load_documents(files):
     for file in files:
         # Cas Streamlit (UploadedFile)
         if hasattr(file, "read") and hasattr(file, "name"):
+            if hasattr(file, "seek"):
+                file.seek(0)
             corpus[file.name] = file.read().decode("utf-8")
         # Cas local (str = chemin vers le fichier)
         elif isinstance(file, str):
