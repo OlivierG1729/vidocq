@@ -34,12 +34,43 @@ class EventMarker:
     dates: Sequence[str]
     times: Sequence[str]
 
+    def _join(self, values: Sequence[str]) -> str:
+        cleaned = [value.strip() for value in values if value and value.strip()]
+        return ", ".join(cleaned) if cleaned else "—"
+
+    def individuals_text(self) -> str:
+        """Return a human readable list of individuals."""
+
+        return self._join(self.individuals)
+
+    def dates_text(self) -> str:
+        """Return a human readable list of dates."""
+
+        return self._join(self.dates)
+
+    def times_text(self) -> str:
+        """Return a human readable list of times."""
+
+        return self._join(self.times)
+
+    def moment_text(self) -> str:
+        """Combine dates and times to describe when the event happened."""
+
+        parts = []
+        dates = self.dates_text()
+        times = self.times_text()
+        if dates != "—":
+            parts.append(dates)
+        if times != "—":
+            parts.append(times)
+        return " – ".join(parts) if parts else "—"
+
     def popup_html(self) -> str:
         """Return an HTML snippet describing the marker."""
 
-        people = ", ".join(self.individuals) if self.individuals else "—"
-        dates = ", ".join(self.dates) if self.dates else "—"
-        times = ", ".join(self.times) if self.times else "—"
+        people = self.individuals_text()
+        dates = self.dates_text()
+        times = self.times_text()
         summary = self.summary or "—"
 
         return (
@@ -50,6 +81,19 @@ class EventMarker:
             f"<strong>Personnes :</strong> {people}<br/>"
             f"<strong>Dates :</strong> {dates}<br/>"
             f"<strong>Horaires :</strong> {times}"
+            "</div>"
+        )
+
+    def tooltip_html(self) -> str:
+        """Return a concise HTML snippet for hover tooltips."""
+
+        return (
+            "<div style='line-height:1.4em'>"
+            f"<strong>{self.document}</strong><br/>"
+            f"<em>{self.location_label}</em><br/>"
+            f"<strong>Moment :</strong> {self.moment_text()}<br/>"
+            f"<strong>Personnes :</strong> {self.individuals_text()}<br/>"
+            f"<strong>Résumé :</strong> {self.summary or '—'}"
             "</div>"
         )
 
@@ -187,7 +231,7 @@ def render_event_map(markers: Sequence[EventMarker]) -> Optional[str]:
         folium.Marker(
             location=[marker.latitude, marker.longitude],
             popup=folium.Popup(marker.popup_html(), max_width=300),
-            tooltip=f"{marker.document} – {marker.location_label}",
+            tooltip=folium.Tooltip(marker.tooltip_html(), sticky=True, parse_html=True),
             icon=folium.Icon(color="blue", icon="info-sign"),
         ).add_to(fmap)
 
