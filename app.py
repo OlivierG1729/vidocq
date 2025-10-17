@@ -272,6 +272,7 @@ elif view_mode == "Carte des événements":
                         build_event_markers(
                             doc_name,
                             cached,
+                            index_data.documents[doc_name],
                             prefer_addresses=prefer_addresses,
                             max_locations=max_locations,
                         )

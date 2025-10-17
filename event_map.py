@@ -9,16 +9,33 @@ from :mod:`entity_extractor` and receive an HTML fragment representing the map.
 from __future__ import annotations
 
 import json
+import re
+import textwrap
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple, TypeVar
 
 import folium
 from geopy.extra.rate_limiter import RateLimiter
 from geopy.geocoders import Nominatim
 
+from entity_extractor import (
+    extract_dates,
+    extract_events,
+    extract_individuals,
+    extract_times,
+)
+
 _GEOCODE_CACHE_PATH = Path("output/geocode_cache.json")
 _GEOCODE_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+_LLM_MODEL = "mistral:7b-instruct-q4_K_M"
+_LLM_ENDPOINT = "http://localhost:11434/api/generate"
+_MAX_CONTEXT_CHARS = 2000
+
+_LLM_DETAILS_CACHE: Dict[Tuple[str, str], Tuple[str, List[str], str]] = {}
 
 
 @dataclass
@@ -31,8 +48,7 @@ class EventMarker:
     longitude: float
     summary: str
     individuals: Sequence[str]
-    dates: Sequence[str]
-    times: Sequence[str]
+    moment: str
 
     def _join(self, values: Sequence[str]) -> str:
         cleaned = [value.strip() for value in values if value and value.strip()]
@@ -43,34 +59,19 @@ class EventMarker:
 
         return self._join(self.individuals)
 
-    def dates_text(self) -> str:
-        """Return a human readable list of dates."""
-
-        return self._join(self.dates)
-
-    def times_text(self) -> str:
-        """Return a human readable list of times."""
-
-        return self._join(self.times)
-
     def moment_text(self) -> str:
-        """Combine dates and times to describe when the event happened."""
+        """Return the textual description of when the event occurred."""
 
-        parts = []
-        dates = self.dates_text()
-        times = self.times_text()
-        if dates != "—":
-            parts.append(dates)
-        if times != "—":
-            parts.append(times)
-        return " – ".join(parts) if parts else "—"
+        if isinstance(self.moment, str):
+            moment = self.moment.strip()
+            return moment or "—"
+        return "—"
 
     def popup_html(self) -> str:
         """Return an HTML snippet describing the marker."""
 
         people = self.individuals_text()
-        dates = self.dates_text()
-        times = self.times_text()
+        moment = self.moment_text()
         summary = self.summary or "—"
 
         return (
@@ -79,8 +80,7 @@ class EventMarker:
             f"<div style='margin-top:0.5em'>"
             f"<strong>Résumé :</strong> {summary}<br/>"
             f"<strong>Personnes :</strong> {people}<br/>"
-            f"<strong>Dates :</strong> {dates}<br/>"
-            f"<strong>Horaires :</strong> {times}"
+            f"<strong>Moment :</strong> {moment}"
             "</div>"
         )
 
@@ -158,9 +158,253 @@ def _get_geocoder() -> _Geocoder:
     return _GEOCODER
 
 
+def _call_ollama(prompt: str) -> Optional[str]:
+    payload = {"model": _LLM_MODEL, "prompt": prompt, "stream": False}
+    data = json.dumps(payload).encode("utf-8")
+    request = urllib.request.Request(
+        _LLM_ENDPOINT,
+        data=data,
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            raw = response.read()
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return None
+
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+
+    content = payload.get("response")
+    if isinstance(content, str):
+        content = content.strip()
+        return content or None
+    return None
+
+
+def _extract_json_object(raw: str) -> Optional[Dict[str, object]]:
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group(0))
+            except json.JSONDecodeError:
+                return None
+    return None
+
+
+def _normalise_people(value: object) -> List[str]:
+    if isinstance(value, str):
+        tokens = re.split(r"[,;/\n]", value)
+        return [token.strip() for token in tokens if token.strip()]
+
+    if isinstance(value, Iterable):
+        cleaned: List[str] = []
+        for item in value:
+            if isinstance(item, str):
+                token = item.strip()
+            else:
+                token = str(item).strip()
+            if token:
+                cleaned.append(token)
+        return cleaned
+
+    return []
+
+
+def _combine_moment_parts(dates: Sequence[str], times: Sequence[str]) -> str:
+    parts: List[str] = []
+
+    unique_dates = []
+    seen_dates = set()
+    for date in dates:
+        value = str(date).strip()
+        if value and value not in seen_dates:
+            seen_dates.add(value)
+            unique_dates.append(value)
+    if unique_dates:
+        parts.append(", ".join(sorted(unique_dates)))
+
+    unique_times: List[str] = []
+    for time in times:
+        value = str(time).strip()
+        if value and value not in unique_times:
+            unique_times.append(value)
+    if unique_times:
+        parts.append(", ".join(unique_times))
+
+    return " – ".join(parts)
+
+
+def _llm_details_for_location(
+    document_id: str,
+    location_label: str,
+    context: str,
+) -> Optional[Tuple[str, List[str], str]]:
+    trimmed = context.strip()
+    if not trimmed:
+        return None
+
+    cache_key = (document_id, location_label.strip().lower())
+    cached = _LLM_DETAILS_CACHE.get(cache_key)
+    if cached is not None:
+        summary, people, moment = cached
+        return summary, list(people), moment
+
+    if len(trimmed) > _MAX_CONTEXT_CHARS:
+        trimmed = trimmed[:_MAX_CONTEXT_CHARS]
+
+    prompt = textwrap.dedent(
+        f'''
+Tu es un analyste francophone chargé de décrire un événement.
+
+À partir du passage ci-dessous, extrait uniquement les informations liées à l'événement se déroulant au lieu « {location_label} ».
+
+Réponds en fournissant strictement un objet JSON respectant le format suivant :
+{{
+  "resume": "résumé concis en une ou deux phrases",
+  "personnes": ["Nom Prénom", ...],
+  "moment": "description brève du moment (date, heure, période…)"
+}}
+
+- "personnes" doit contenir une liste de personnes impliquées (vide si aucune n'est mentionnée).
+- "moment" doit préciser la date, l'heure ou la période associée à cet événement, si l'information existe.
+- N'ajoute aucun autre texte en dehors de l'objet JSON.
+
+Passage à analyser :
+"""{trimmed}"""
+'''
+    ).strip()
+
+    raw = _call_ollama(prompt)
+    if not raw:
+        return None
+
+    payload = _extract_json_object(raw)
+    if not payload:
+        return None
+
+    summary = str(
+        payload.get("resume")
+        or payload.get("résumé")
+        or payload.get("summary")
+        or ""
+    ).strip()
+
+    individuals = _normalise_people(
+        payload.get("personnes")
+        or payload.get("personnalites")
+        or payload.get("individus")
+        or payload.get("people")
+        or []
+    )
+
+    moment = str(
+        payload.get("moment")
+        or payload.get("date")
+        or payload.get("horaires")
+        or payload.get("when")
+        or ""
+    ).strip()
+
+    _LLM_DETAILS_CACHE[cache_key] = (summary, tuple(individuals), moment)
+
+    return summary, individuals, moment
+
+
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+_T = TypeVar("_T")
+
+
+def _unique_preserve_order(values: Sequence[_T]) -> List[_T]:
+    seen = set()
+    ordered: List[_T] = []
+    for value in values:
+        if value and value not in seen:
+            seen.add(value)
+            ordered.append(value)
+    return ordered
+
+
+def _split_sentences(text: str) -> List[str]:
+    parts = [segment.strip() for segment in _SENTENCE_SPLIT_RE.split(text) if segment.strip()]
+    if not parts:
+        text = text.strip()
+        return [text] if text else []
+    return parts
+
+
+def _context_for_location(sentences: Sequence[str], location_label: str) -> str:
+    normalised = location_label.casefold()
+    context_sentences: List[str] = []
+    for index, sentence in enumerate(sentences):
+        if normalised in sentence.casefold():
+            start = max(0, index - 1)
+            stop = min(len(sentences), index + 2)
+            for neighbour in sentences[start:stop]:
+                if neighbour not in context_sentences:
+                    context_sentences.append(neighbour)
+    return " ".join(context_sentences).strip()
+
+
+def _details_for_location(
+    document_id: str,
+    record: Dict[str, Iterable[str]],
+    sentences: Sequence[str],
+    location_label: str,
+) -> Tuple[str, List[str], str]:
+    context = _context_for_location(sentences, location_label)
+
+    fallback_summary = str(record.get("summary") or "").strip()
+    fallback_individuals = [
+        str(value).strip() for value in record.get("individuals", []) if str(value).strip()
+    ]
+    fallback_dates = [str(value).strip() for value in record.get("dates", []) if str(value).strip()]
+    fallback_times = [str(value).strip() for value in record.get("times", []) if str(value).strip()]
+    fallback_moment = _combine_moment_parts(fallback_dates, fallback_times)
+
+    summary = fallback_summary
+    individuals = list(fallback_individuals)
+    moment = fallback_moment
+
+    if context:
+        llm_details = _llm_details_for_location(document_id, location_label, context)
+        if llm_details:
+            llm_summary, llm_people, llm_moment = llm_details
+            if llm_summary:
+                summary = llm_summary
+            if llm_people:
+                individuals = llm_people
+            if llm_moment:
+                moment = llm_moment
+
+        if not summary:
+            summary = extract_events(context, nb_sentences=2).strip() or context
+        if not individuals:
+            individuals = _unique_preserve_order(extract_individuals(context))
+        if not moment:
+            dates = sorted(set(extract_dates(context)))
+            times = _unique_preserve_order(extract_times(context))
+            moment = _combine_moment_parts(dates, times)
+
+    if not summary:
+        summary = fallback_summary
+    if not individuals:
+        individuals = fallback_individuals
+    if not moment:
+        moment = fallback_moment
+
+    return summary, individuals, moment
+
+
 def build_event_markers(
     document_id: str,
     record: Dict[str, Iterable[str]],
+    document_text: str,
     *,
     prefer_addresses: bool = True,
     max_locations: int = 10,
@@ -178,6 +422,7 @@ def build_event_markers(
     seen_labels = set()
     markers: List[EventMarker] = []
     geocoder = _get_geocoder()
+    sentences = _split_sentences(document_text)
 
     for label in candidates:
         key = label.strip()
@@ -193,16 +438,19 @@ def build_event_markers(
         if coords is None:
             continue
 
+        summary, individuals, moment = _details_for_location(
+            document_id, record, sentences, key
+        )
+
         markers.append(
             EventMarker(
                 document=document_id,
                 location_label=key,
                 latitude=coords[0],
                 longitude=coords[1],
-                summary=str(record.get("summary") or ""),
-                individuals=list(record.get("individuals", [])),
-                dates=list(record.get("dates", [])),
-                times=list(record.get("times", [])),
+                summary=summary,
+                individuals=individuals,
+                moment=moment,
             )
         )
 
@@ -249,9 +497,8 @@ def markers_to_rows(markers: Sequence[EventMarker]) -> List[Dict[str, str]]:
                 "lieu": marker.location_label,
                 "latitude": f"{marker.latitude:.6f}",
                 "longitude": f"{marker.longitude:.6f}",
-                "personnes": ", ".join(marker.individuals) or "—",
-                "dates": ", ".join(marker.dates) or "—",
-                "horaires": ", ".join(marker.times) or "—",
+                "personnes": marker.individuals_text(),
+                "moment": marker.moment_text(),
                 "résumé": marker.summary or "—",
             }
         )
