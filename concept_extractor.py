@@ -12,16 +12,17 @@ Created on Wed Jul  2 12:34:26 2025
 ############################
 
 
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sentence_transformers import SentenceTransformer, util
+from sentence_transformers import util
 import numpy as np
 import re
 import unicodedata
 import spacy
 from spacy.lang.fr.stop_words import STOP_WORDS
 
-# 🧠 Chargement du modèle sémantique
-model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+from lib.indexing import IndexData, get_index_manager
+
+
+index_manager = get_index_manager()
 
 # Charge le modèle français de spaCy
 nlp = spacy.load("fr_core_news_md")  # ou "sm" si tu veux une version plus légère
@@ -63,19 +64,23 @@ def clean_text_light(text):
     return text
 
 
-def extract_exact_concepts(corpus, keywords):
+def extract_exact_concepts(index_data: IndexData, keywords):
     # 🔡 Nettoie les mots-clés (minuscules, suppression accents, etc.)
     cleaned_keywords = [clean_text_light(k) for k in keywords]
-    concept_to_docs = {keyword: [] for keyword in keywords}
+    concept_to_docs = {}
 
-    for doc_name, doc_text in corpus.items():
-        doc_text_clean = clean_text_light(doc_text)
+    for original_keyword, cleaned_keyword in zip(keywords, cleaned_keywords):
+        docs_from_index = set(index_data.inverted_index.get(cleaned_keyword, []))
 
-        for original_keyword, cleaned_keyword in zip(keywords, cleaned_keywords):
-            if cleaned_keyword in doc_text_clean:
-                concept_to_docs[original_keyword].append(doc_name)
+        if not docs_from_index:
+            for doc_name, doc_text_clean in index_data.clean_documents.items():
+                if cleaned_keyword in doc_text_clean:
+                    docs_from_index.add(doc_name)
 
-    return {k: v for k, v in concept_to_docs.items() if v}
+        if docs_from_index:
+            concept_to_docs[original_keyword] = sorted(docs_from_index)
+
+    return concept_to_docs
 
 
 # def extract_exact_concepts(corpus, keywords):
@@ -90,28 +95,25 @@ def extract_exact_concepts(corpus, keywords):
 #     return {k: v for k, v in concept_to_docs.items() if v}
 
 
-def extract_tfidf_concepts(corpus, keywords, threshold=0.3):
-    doc_names = list(corpus.keys())
-    doc_texts = [clean_text_light(corpus[doc]) for doc in doc_names]
-
-    # vectorizer = TfidfVectorizer()
-    vectorizer = TfidfVectorizer(ngram_range=(1, 3))  # Unigrammes, bigrammes, trigrammes
-    tfidf_matrix = vectorizer.fit_transform(doc_texts)
+def extract_tfidf_concepts(index_data: IndexData, keywords, threshold=0.3):
+    doc_names = index_data.doc_order
+    tfidf_matrix = index_data.tfidf_matrix
+    vectorizer = index_data.tfidf_vectorizer
     feature_names = vectorizer.get_feature_names_out()
 
     keyword_vectors = []
-    for keyword in keywords:
-        if keyword in feature_names:
-            idx = np.where(feature_names == keyword)[0][0]
+    cleaned_keywords = [clean_text_light(keyword) for keyword in keywords]
+    for original_keyword, cleaned_keyword in zip(keywords, cleaned_keywords):
+        if cleaned_keyword in feature_names:
+            idx = np.where(feature_names == cleaned_keyword)[0][0]
             keyword_vector = tfidf_matrix[:, idx].toarray().flatten()
-            keyword_vectors.append((keyword, keyword_vector))
+            keyword_vectors.append((original_keyword, keyword_vector))
         else:
-            # 🔍 Tentative de récupération de variantes partielles
-            matches = [f for f in feature_names if keyword in f]
+            matches = [f for f in feature_names if cleaned_keyword in f]
             for match in matches:
                 idx = np.where(feature_names == match)[0][0]
                 keyword_vector = tfidf_matrix[:, idx].toarray().flatten()
-                keyword_vectors.append((match, keyword_vector))
+                keyword_vectors.append((original_keyword, keyword_vector))
 
     # for keyword in keywords:
     #     if keyword in feature_names:
@@ -119,23 +121,19 @@ def extract_tfidf_concepts(corpus, keywords, threshold=0.3):
     #         keyword_vector = tfidf_matrix[:, idx].toarray().flatten()
     #         keyword_vectors.append((keyword, keyword_vector))
 
-    concept_to_docs = {keyword: [] for keyword in keywords}
+    concept_to_docs = {}
     for keyword, vector in keyword_vectors:
-        for i, score in enumerate(vector):
-            if score >= threshold:
-                concept_to_docs[keyword].append(doc_names[i])
+        matching_docs = [doc_names[i] for i, score in enumerate(vector) if score >= threshold]
+        if matching_docs:
+            concept_to_docs[keyword] = matching_docs
 
-    return {k: v for k, v in concept_to_docs.items() if v}
+    return concept_to_docs
 
 
-def extract_semantic_concepts(corpus, keywords, threshold=0.5):
-    doc_names = list(corpus.keys())
-    doc_texts = [clean_text_light(corpus[doc]) for doc in doc_names]
-
-    # 🔐 Sécurise l'encodage des documents
-    doc_embeddings = model.encode(doc_texts, convert_to_tensor=True)
-    # doc_embeddings = st.session_state["doc_embeddings"]
-    keyword_embeddings = model.encode(keywords, convert_to_tensor=True)
+def extract_semantic_concepts(index_data: IndexData, keywords, threshold=0.5):
+    doc_names = index_data.doc_order
+    doc_embeddings = index_data.as_tensor()
+    keyword_embeddings = index_manager.model.encode(keywords, convert_to_tensor=True)
 
     concept_to_docs = {keyword: [] for keyword in keywords}
 
@@ -150,12 +148,10 @@ def extract_semantic_concepts(corpus, keywords, threshold=0.5):
     return {k: v for k, v in concept_to_docs.items() if v}
 
 
-def extract_top_semantic_concepts(corpus, keywords, top_n=3):
-    doc_names = list(corpus.keys())
-    doc_texts = [clean_text_light(corpus[doc]) for doc in doc_names]
-
-    doc_embeddings = model.encode(doc_texts, convert_to_tensor=True)
-    keyword_embeddings = model.encode(keywords, convert_to_tensor=True)
+def extract_top_semantic_concepts(index_data: IndexData, keywords, top_n=3):
+    doc_names = index_data.doc_order
+    doc_embeddings = index_data.as_tensor()
+    keyword_embeddings = index_manager.model.encode(keywords, convert_to_tensor=True)
 
     concept_to_docs = {}
 
