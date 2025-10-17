@@ -1,7 +1,7 @@
 """Utilities to convert extracted entities into an interactive map of events.
 
 This module centralises the logic that geocodes textual locations and builds a
-Folium map that can be embedded inside the Streamlit application.  The goal is
+Folium map that can be embedded inside the Streamlit application. The goal is
 that the Streamlit layer only has to provide the raw entity payloads coming
 from :mod:`entity_extractor` and receive an HTML fragment representing the map.
 """
@@ -28,6 +28,9 @@ from entity_extractor import (
     extract_times,
 )
 
+# ---------------------------------------------------------------------------
+# Constants and cache paths
+
 _GEOCODE_CACHE_PATH = Path("output/geocode_cache.json")
 _GEOCODE_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -37,6 +40,9 @@ _MAX_CONTEXT_CHARS = 2000
 
 _LLM_DETAILS_CACHE_PATH = Path("output/llm_details_cache.json")
 _LLM_DETAILS_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+# ---------------------------------------------------------------------------
+# LLM cache management
 
 
 def _load_llm_details_cache() -> Dict[Tuple[str, str], Tuple[str, Tuple[str, ...], str]]:
@@ -98,6 +104,9 @@ def _save_llm_details_cache(cache: Dict[Tuple[str, str], Tuple[str, Tuple[str, .
 
 _LLM_DETAILS_CACHE: Dict[Tuple[str, str], Tuple[str, Tuple[str, ...], str]] = _load_llm_details_cache()
 
+# ---------------------------------------------------------------------------
+# Data structures
+
 
 @dataclass
 class EventMarker:
@@ -117,12 +126,10 @@ class EventMarker:
 
     def individuals_text(self) -> str:
         """Return a human readable list of individuals."""
-
         return self._join(self.individuals)
 
     def moment_text(self) -> str:
         """Return the textual description of when the event occurred."""
-
         if isinstance(self.moment, str):
             moment = self.moment.strip()
             return moment or "—"
@@ -130,7 +137,6 @@ class EventMarker:
 
     def popup_html(self) -> str:
         """Return an HTML snippet describing the marker."""
-
         people = self.individuals_text()
         moment = self.moment_text()
         summary = self.summary or "—"
@@ -147,7 +153,6 @@ class EventMarker:
 
     def tooltip_html(self) -> str:
         """Return a concise HTML snippet for hover tooltips."""
-
         return (
             "<div style='line-height:1.4em'>"
             f"<strong>{self.document}</strong><br/>"
@@ -157,6 +162,9 @@ class EventMarker:
             f"<strong>Résumé :</strong> {self.summary or '—'}"
             "</div>"
         )
+
+# ---------------------------------------------------------------------------
+# Geocoding with caching
 
 
 class _Geocoder:
@@ -218,6 +226,9 @@ def _get_geocoder() -> _Geocoder:
         _GEOCODER = _Geocoder()
     return _GEOCODER
 
+# ---------------------------------------------------------------------------
+# LLM-assisted extraction helpers
+
 
 def _call_ollama(prompt: str) -> Optional[str]:
     payload = {"model": _LLM_MODEL, "prompt": prompt, "stream": False}
@@ -266,10 +277,7 @@ def _normalise_people(value: object) -> List[str]:
     if isinstance(value, Iterable):
         cleaned: List[str] = []
         for item in value:
-            if isinstance(item, str):
-                token = item.strip()
-            else:
-                token = str(item).strip()
+            token = str(item).strip()
             if token:
                 cleaned.append(token)
         return cleaned
@@ -379,6 +387,9 @@ Passage à analyser :
 
     return summary, individuals, moment
 
+# ---------------------------------------------------------------------------
+# Text context utilities
+
 
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
 _T = TypeVar("_T")
@@ -463,6 +474,9 @@ def _details_for_location(
         moment = fallback_moment
 
     return summary, individuals, moment
+
+# ---------------------------------------------------------------------------
+# Marker generation and rendering
 
 
 def build_event_markers(
