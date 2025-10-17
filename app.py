@@ -24,6 +24,7 @@ from graph_builder import build_graph
 from graph_display import display_graph, export_graph_image
 from lib.indexing import get_index_manager
 from word_cloud_builder import generate_wordcloud
+from event_map import build_event_markers, markers_to_rows, render_event_map
 
 index_manager = get_index_manager()
 entity_cache = get_entity_cache()
@@ -97,7 +98,7 @@ with col_graph:
     st.markdown("### 🌐 Visualisation")
     view_mode = st.selectbox(
         "Choisissez la vue :",
-        ["Graphe des concepts", "Nuage de mots", "Tables"],
+        ["Graphe des concepts", "Nuage de mots", "Tables", "Carte des événements"],
     )
 
 # --- Traitement principal ---
@@ -231,6 +232,83 @@ elif view_mode == "Tables":
 
                     st.markdown(f"#### {doc_name}")
                     st.table(table)
+
+elif view_mode == "Carte des événements":
+    with col2:
+        st.markdown("### 🔍 Paramètres de la carte")
+        if not uploaded_files:
+            st.info("Chargez des documents pour cartographier les événements.")
+        elif index_data is None:
+            st.error("Impossible de récupérer les documents indexés.")
+        else:
+            doc_names = index_data.doc_order
+            default_selection = doc_names[: min(len(doc_names), 5)]
+            selected_docs = st.multiselect(
+                "Choisissez les documents à représenter :",
+                doc_names,
+                default=default_selection,
+            )
+            max_locations = st.slider(
+                "Nombre maximum de lieux par document",
+                min_value=1,
+                max_value=20,
+                value=5,
+                step=1,
+            )
+            prefer_addresses = st.checkbox(
+                "Privilégier les adresses précises lorsqu'elles existent",
+                value=True,
+            )
+
+            if selected_docs:
+                markers = []
+                for doc_name in selected_docs:
+                    cached = entity_cache.get_or_create(
+                        doc_name,
+                        index_data.document_hashes.get(doc_name, ""),
+                        index_data.documents[doc_name],
+                    )
+                    markers.extend(
+                        build_event_markers(
+                            doc_name,
+                            cached,
+                            prefer_addresses=prefer_addresses,
+                            max_locations=max_locations,
+                        )
+                    )
+
+                if markers:
+                    map_html = render_event_map(markers)
+                    if map_html:
+                        with col_graph:
+                            st.markdown("### 🗺️ Carte des événements")
+                            components.html(map_html, height=600)
+
+                            rows = markers_to_rows(markers)
+                            if rows:
+                                df = pd.DataFrame(rows)
+                                st.markdown("### 📋 Détails des événements géolocalisés")
+                                st.dataframe(df)
+                                csv_bytes = df.to_csv(index=False).encode("utf-8")
+                                st.download_button(
+                                    "💾 Télécharger les événements (CSV)",
+                                    data=csv_bytes,
+                                    file_name="evenements_geolocalises.csv",
+                                    mime="text/csv",
+                                )
+                    else:
+                        with col_graph:
+                            st.warning(
+                                "Aucun des lieux sélectionnés n'a pu être géolocalisé."
+                            )
+                else:
+                    with col_graph:
+                        st.warning(
+                            "Aucun des lieux sélectionnés n'a pu être géolocalisé."
+                        )
+            else:
+                with col_graph:
+                    st.info("Sélectionnez au moins un document pour afficher la carte.")
 
 # --- Affichage du graphe + texte sélectionné ---
 if view_mode == "Graphe des concepts":
