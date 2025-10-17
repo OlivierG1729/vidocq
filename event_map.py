@@ -35,7 +35,68 @@ _LLM_MODEL = "mistral:7b-instruct-q4_K_M"
 _LLM_ENDPOINT = "http://localhost:11434/api/generate"
 _MAX_CONTEXT_CHARS = 2000
 
-_LLM_DETAILS_CACHE: Dict[Tuple[str, str], Tuple[str, List[str], str]] = {}
+_LLM_DETAILS_CACHE_PATH = Path("output/llm_details_cache.json")
+_LLM_DETAILS_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+
+def _load_llm_details_cache() -> Dict[Tuple[str, str], Tuple[str, Tuple[str, ...], str]]:
+    if not _LLM_DETAILS_CACHE_PATH.exists():
+        return {}
+
+    try:
+        with open(_LLM_DETAILS_CACHE_PATH, "r", encoding="utf-8") as fh:
+            payload = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+    cache: Dict[Tuple[str, str], Tuple[str, Tuple[str, ...], str]] = {}
+    if isinstance(payload, list):
+        items = payload
+    elif isinstance(payload, dict):
+        items = payload.get("entries", []) if isinstance(payload.get("entries"), list) else []
+    else:
+        items = []
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        document_id = str(item.get("document") or "").strip()
+        location_label = str(item.get("location") or "").strip().lower()
+        if not document_id or not location_label:
+            continue
+        summary = str(item.get("summary") or "")
+        moment = str(item.get("moment") or "")
+        raw_people = item.get("people")
+        if isinstance(raw_people, list):
+            people = tuple(str(person) for person in raw_people if str(person))
+        else:
+            people = ()
+        cache[(document_id, location_label)] = (summary, people, moment)
+
+    return cache
+
+
+def _save_llm_details_cache(cache: Dict[Tuple[str, str], Tuple[str, Tuple[str, ...], str]]) -> None:
+    entries = []
+    for (document_id, location_label), (summary, people, moment) in cache.items():
+        entries.append(
+            {
+                "document": document_id,
+                "location": location_label,
+                "summary": summary,
+                "people": list(people),
+                "moment": moment,
+            }
+        )
+
+    try:
+        with open(_LLM_DETAILS_CACHE_PATH, "w", encoding="utf-8") as fh:
+            json.dump(entries, fh, ensure_ascii=False, indent=2)
+    except OSError:
+        return
+
+
+_LLM_DETAILS_CACHE: Dict[Tuple[str, str], Tuple[str, Tuple[str, ...], str]] = _load_llm_details_cache()
 
 
 @dataclass
@@ -311,7 +372,10 @@ Passage à analyser :
         or ""
     ).strip()
 
-    _LLM_DETAILS_CACHE[cache_key] = (summary, tuple(individuals), moment)
+    cache_value = (summary, tuple(individuals), moment)
+    if _LLM_DETAILS_CACHE.get(cache_key) != cache_value:
+        _LLM_DETAILS_CACHE[cache_key] = cache_value
+        _save_llm_details_cache(_LLM_DETAILS_CACHE)
 
     return summary, individuals, moment
 
