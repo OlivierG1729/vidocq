@@ -130,41 +130,68 @@ def extract_tfidf_concepts(index_data: IndexData, keywords, threshold=0.3):
     return concept_to_docs
 
 
-def extract_semantic_concepts(index_data: IndexData, keywords, threshold=0.5):
-    doc_names = index_data.doc_order
-    doc_embeddings = index_data.as_tensor()
-    keyword_embeddings = index_manager.model.encode(keywords, convert_to_tensor=True)
+from sentence_transformers import util
 
-    concept_to_docs = {keyword: [] for keyword in keywords}
+def extract_semantic_concepts(index_data: IndexData, keywords, threshold=0.5):
+    """
+    Associe chaque concept aux documents contenant au moins un passage
+    dont la similarité sémantique dépasse le seuil donné.
+    """
+    model = index_data.model if hasattr(index_data, "model") else index_manager.model
+    passage_embeddings = index_data.as_tensor()
+    passage_to_doc = index_data.passage_to_doc
+
+    keyword_embeddings = model.encode(keywords, convert_to_tensor=True)
+    concept_to_docs = {kw: set() for kw in keywords}
 
     for i, keyword in enumerate(keywords):
-        keyword_emb = keyword_embeddings[i]
-        similarities = util.pytorch_cos_sim(keyword_emb, doc_embeddings)[0]
+        kw_emb = keyword_embeddings[i]
+        similarities = util.pytorch_cos_sim(kw_emb, passage_embeddings)[0]
 
         for j, score in enumerate(similarities):
             if score >= threshold:
-                concept_to_docs[keyword].append(doc_names[j])
+                doc_name = passage_to_doc[j]
+                concept_to_docs[keyword].add(doc_name)
 
-    return {k: v for k, v in concept_to_docs.items() if v}
+    # Conversion des sets en listes triées
+    return {k: sorted(v) for k, v in concept_to_docs.items() if v}
 
+
+
+
+from sentence_transformers import util
 
 def extract_top_semantic_concepts(index_data: IndexData, keywords, top_n=3):
-    doc_names = index_data.doc_order
-    doc_embeddings = index_data.as_tensor()
-    keyword_embeddings = index_manager.model.encode(keywords, convert_to_tensor=True)
+    """
+    Associe chaque concept aux documents contenant les passages les plus proches sémantiquement.
+    Retourne, pour chaque concept, la liste des top_n documents les plus pertinents.
+    """
+    model = index_data.model if hasattr(index_data, "model") else index_manager.model
+    passage_embeddings = index_data.as_tensor()
+    passage_to_doc = index_data.passage_to_doc
 
+    keyword_embeddings = model.encode(keywords, convert_to_tensor=True)
     concept_to_docs = {}
 
     for i, keyword in enumerate(keywords):
-        keyword_emb = keyword_embeddings[i]
-        similarities = util.pytorch_cos_sim(keyword_emb, doc_embeddings)[0]
+        kw_emb = keyword_embeddings[i]
+        similarities = util.pytorch_cos_sim(kw_emb, passage_embeddings)[0]
 
-        top_indices = similarities.argsort(descending=True)[:top_n]
-        top_docs = [doc_names[j] for j in top_indices]
+        # Tri décroissant des passages les plus proches
+        top_indices = similarities.argsort(descending=True)
+
+        top_docs = []
+        for idx in top_indices:
+            doc_name = passage_to_doc[idx]
+            if doc_name not in top_docs:
+                top_docs.append(doc_name)
+            if len(top_docs) >= top_n:
+                break
 
         concept_to_docs[keyword] = top_docs
 
     return concept_to_docs
+
 
 
 

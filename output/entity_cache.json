@@ -1,0 +1,110 @@
+{
+  "texte6.txt": {
+    "individuals": [],
+    "locations": [],
+    "addresses": [],
+    "dates": [
+      "2025-10-18"
+    ],
+    "times": [],
+    "summary": "Elle peut également surveiller la santé de votre corps et vous dire quand quelque chose ne va pas-et ce qu'il faut faire.L'IA peut également s'assurer que votre alimentation est équilibrée en vous fournissant des conseils nutritionnels basés sur les données de millions de personnes dans le monde qui ont mangé les mêmes aliments que vous, tout en tenant compte de toutes sortes de facteurs comme les choix de mode de vie et les groupes d'âge.",
+    "hash": "c5204cec7a1bb572f0f42ac87dab7688"
+  },
+  "texte2.txt": {
+    "individuals": [],
+    "locations": [],
+    "addresses": [],
+    "dates": [],
+    "times": [],
+    "summary": "Investigation, OSINT, IA Les méthodes d’investigation moderne s’appuient de plus en plus sur l’OSINT (Open Source Intelligence), qui exploite les données accessibles publiquement.",
+    "hash": "e823b63fbb546b57811f2666eeff19d5"
+  },
+  "texte_Louvre.txt": {
+    "individuals": [
+      "Mme Dati",
+      "Laurent Nuñez",
+      "Laurent Nunez",
+      "Laure Beccuau",
+      "Rachida Dati",
+      "Mme Beccuau"
+    ],
+    "locations": [
+      "La Courneuve",
+      "République de Paris",
+      "Seine-Saint-Denis",
+      "Algérie",
+      "Musée du Louvre",
+      "Roissy",
+      "Paris",
+      "Louvre",
+      "Parisien",
+      "Aubervilliers"
+    ],
+    "addresses": [],
+    "dates": [
+      "1950-11-19",
+      "1977-11-07",
+      "1938-10-23",
+      "1938-10-20",
+      "1977-10-29",
+      "1950-11-25",
+      "1950-11-29",
+      "1977-10-26",
+      "1938-10-15",
+      "1938-10-26",
+      "1987-11-04",
+      "2015-11-08",
+      "1950-11-26",
+      "2015-11-07",
+      "1938-10-14",
+      "1987-10-31",
+      "1987-11-29",
+      "1950-11-12",
+      "1950-11-08",
+      "1987-11-30"
+    ],
+    "times": [],
+    "summary": "Concernant les bijoux, la procureure avait expliqué que l’Office central de lutte contre le trafic des biens culturels explorait « un certain nombre de marchés parallèles », car ce n’est vraisemblablement pas sur le marché légal des œuvres d’art qu’ils surgiront.",
+    "hash": "b30a15a9bbd84bce7c0f42cfd76c8d23"
+  },
+  "texte1.txt": {
+    "individuals": [],
+    "locations": [],
+    "addresses": [],
+    "dates": [],
+    "times": [],
+    "summary": "Aujourd’hui, les progrès de la technologie permettent à l’intelligence artificielle d’assister les utilisateurs dans des tâches complexes, de la rédaction automatique à la gestion des données personnelles.",
+    "hash": "66d3faf320b98fa4fa2ecc4bc7771a65"
+  },
+  "texte3.txt": {
+    "individuals": [],
+    "locations": [],
+    "addresses": [],
+    "dates": [],
+    "times": [],
+    "summary": "Crise climatique, IA Face à la crise climatique, l’intelligence artificielle est utilisée pour modéliser l’évolution des températures, optimiser la consommation énergétique ou encore prévoir les catastrophes naturelles.",
+    "hash": "67a108bd97da047bc532f7d0c8f632b9"
+  },
+  "texte4.txt": {
+    "individuals": [],
+    "locations": [],
+    "addresses": [],
+    "dates": [],
+    "times": [],
+    "summary": "Si elle peut aider à analyser des milliers de décisions de justice, son usage dans les prédictions de verdicts ou l’aide à la décision doit rester encadré pour garantir l’équité et la transparence.",
+    "hash": "d1619d91a59eb0b043e14c3aed94d0a0"
+  },
+  "texte5.txt": {
+    "individuals": [],
+    "locations": [
+      "États"
+    ],
+    "addresses": [],
+    "dates": [
+      "2025-11-01"
+    ],
+    "times": [],
+    "summary": "Il encadre des questions aussi variées que les conflits armés, les traités commerciaux ou les droits humains.",
+    "hash": "cb7eec6a35338f2f1afe9cb8b66e4a10"
+  }
+}
