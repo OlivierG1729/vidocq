@@ -871,3 +871,5 @@ elif view_mode == "Carte":
         else:
             with col_graph:
                 st.info("Veuillez charger des documents puis cliquer sur 🚀 **Lancer la vue**.")
+
+# test
