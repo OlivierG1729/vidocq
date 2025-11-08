@@ -38,6 +38,8 @@ from mapping_chrono import (
     build_map_static,   # (toujours disponible si besoin du fallback Folium)
 )
 
+mode_visu = "Statique" # temporaire, dynamique désactivée pour l'instant
+
 # ====================================
 # CACHES & CONFIG
 # ====================================
@@ -193,30 +195,120 @@ def _get_mapbox_style(selected_style_uri: str | None = None):
     return None
 
 @st.cache_data
+def geocode_cached(lieu: str):
+    """
+    Géocode un lieu une seule fois et conserve le résultat
+    dans le cache Streamlit.
+    Cela évite les appels répétés à l'API pour les mêmes lieux.
+    """
+    return geocoder_lieu(lieu)
+
+
+@st.cache_data
 def build_points_df_cached(events_key: str, events: list, _geocoder_lieu):
     """
-    Construit le DataFrame pydeck des points géocodés une seule fois
-    par (doc/mode/individu). 'events_key' doit changer quand l'entrée change.
+    Construit un DataFrame pydeck regroupé par coordonnées géographiques.
+    Si plusieurs événements partagent le même lieu (lat, lon), ils sont fusionnés
+    dans une même ligne, et les événements sont triés par ordre chronologique
+    si possible (selon la colonne 'moment').
+    Le géocodage est mis en cache pour éviter les répétitions coûteuses.
     """
+    import time
+    t0 = time.perf_counter()
     rows = []
     for i, ev in enumerate(events, start=1):
         lieu = (ev.get("lieu") or "").strip()
         if not lieu:
             continue
-        g = _geocoder_lieu(lieu)  # ← on utilise l'arg underscore
+
+        # ✅ géocodage mis en cache : 100x plus rapide sur lieux déjà vus
+        g = geocode_cached(lieu)
         if not g:
             continue
+
         lat, lon, _ = g
         rows.append({
-            "idx": i,
             "lat": lat,
             "lon": lon,
-            "resume": ev.get("resume",""),
+            "resume": ev.get("resume", ""),
             "lieu": lieu,
-            "moment": ev.get("moment",""),
-            "individus": ev.get("individus",""),
+            "moment": ev.get("moment", ""),
+            "individus": ev.get("individus", ""),
         })
-    return pd.DataFrame(rows)
+
+    if not rows:
+        return pd.DataFrame(columns=["lat", "lon", "resume", "lieu", "moment", "individus", "tooltip"])
+
+    df = pd.DataFrame(rows)
+
+    # Tentative de conversion des moments en timestamps triables
+    def _parse_moment_to_sortkey(moment):
+        import re
+        import datetime
+        moment = str(moment).strip()
+        if not moment:
+            return datetime.datetime.max
+        try:
+            date_match = re.search(r"(\d{1,2} [A-Za-zéû]+\s*\d{4})", moment)
+            if date_match:
+                try:
+                    return datetime.datetime.strptime(date_match.group(1), "%d %B %Y")
+                except Exception:
+                    pass
+            date_iso = re.search(r"(\d{4}-\d{2}-\d{2})", moment)
+            if date_iso:
+                return datetime.datetime.strptime(date_iso.group(1), "%Y-%m-%d")
+        except Exception:
+            pass
+        return datetime.datetime.max
+
+    df["sortkey"] = df["moment"].apply(_parse_moment_to_sortkey)
+
+    # Tri par lieu puis par date croissante
+    df = df.sort_values(["lat", "lon", "sortkey"], ascending=True)
+
+    # Regroupement des événements par lieu
+    grouped = []
+    for (lat, lon, lieu), grp in df.groupby(["lat", "lon", "lieu"]):
+        resumes = [r for r in grp["resume"] if r]
+        moments = [m for m in grp["moment"] if m]
+        individus = [i for i in grp["individus"] if i]
+
+        
+        # --- Nouveau format plus lisible et ordonné ---
+        tooltip_html = f"<div style='max-height:300px; overflow-y:auto; padding:4px;'>"
+        tooltip_html += f"<b>Lieu :</b> {lieu}<br/><hr style='border:0.5px solid #999;'/>"
+
+        max_len = max(len(resumes), len(moments), len(individus))
+        for k in range(max_len):
+            r = resumes[k] if k < len(resumes) else ""
+            m = moments[k] if k < len(moments) else ""
+            i = individus[k] if k < len(individus) else ""
+            tooltip_html += (
+                f"<b>Événement {k+1} :</b> {r}<br/>"
+                f"<b>Moment :</b> {m}<br/>"
+                f"<b>Individus :</b> {i}<br/><br/>"
+            )
+        tooltip_html += "</div>"
+
+        grouped.append({
+            "lat": lat,
+            "lon": lon,
+            "lieu": lieu,
+            "resume": "; ".join(resumes),
+            "moment": "; ".join(moments),
+            "individus": "; ".join(individus),
+            "tooltip": tooltip_html,
+        })
+
+    grouped_df = pd.DataFrame(grouped)
+    grouped_df["idx"] = range(1, len(grouped_df) + 1)
+
+    t1 = time.perf_counter()
+    print(f"⏱ build_points_df_cached exécuté en {t1 - t0:.2f} s ({len(grouped_df)} points, {len(df)} événements)")
+
+    return grouped_df
+
 
 def _build_pydeck_dynamic_from_df(
     df_points: pd.DataFrame,
@@ -275,9 +367,18 @@ def _build_pydeck_dynamic_from_df(
     )
 
     tooltip = {
-        "html": "<b>#{idx}</b><br/><b>Événement:</b> {resume}<br/><b>Lieu:</b> {lieu}<br/><b>Moment:</b> {moment}<br/><b>Individus:</b> {individus}",
-        "style": {"backgroundColor": "white", "color": "black"}
+    "html": "{tooltip}",
+    "style": {
+        "backgroundColor": "white",
+        "color": "black",
+        "maxHeight": "300px",
+        "overflowY": "auto",
+        "padding": "6px",
+        "width": "300px",
+        "fontSize": "12px"
     }
+    }
+
 
     return pdk.Deck(
         layers=[layer_base, layer_current],
@@ -326,7 +427,7 @@ def _fallback_folium_map_from_events(events: list) -> folium.Map:
 # 🔍 GRAPHE DES CONCEPTS
 if view_mode == "Graphe des concepts":
     with col2:
-        st.markdown("### 🔍 Méthode de recherche")
+        st.markdown("### ⚙️ Paramètres et options")
         search_method = st.selectbox("Méthode utilisée :", ["Recherche exacte", "Recherche sémantique", "Top recherche sémantique", "Recherche par fréquence"])
 
         # Paramètres
@@ -338,7 +439,6 @@ if view_mode == "Graphe des concepts":
         elif search_method == "Recherche par fréquence":
             threshold = st.slider("Seuil de score", 0.0, 1.0, 0.5, step=0.01)
 
-        st.markdown("### 💬 Concepts à rechercher")
         keywords_input = st.text_input("Entrez les concepts (séparés par des virgules)")
 
         # Marque la vue "dirty" si options changent
@@ -413,7 +513,6 @@ if view_mode == "Graphe des concepts":
             linked_docs = sorted(set(doc for docs in st.session_state["filtered"].values() for doc in docs))
 
             with col2:
-                st.markdown("### 💬 Visionnage des documents du graphe")
                 selected_doc = st.selectbox("📁 Choisissez un document lié :", linked_docs, key="doc_graphe_view")
 
             if selected_doc:
@@ -432,6 +531,7 @@ if view_mode == "Graphe des concepts":
 # ☁️ NUAGE DE MOTS
 elif view_mode == "Nuage de mots":
     with col2:
+        st.markdown("### ⚙️ Paramètres et options")
         if files:
             corpus = load_documents(files)
             doc_names = list(corpus.keys())
@@ -482,24 +582,24 @@ elif view_mode == "Synthèse":
     tsv_name = None
 
     with col2:
+        st.markdown("### ⚙️ Paramètres et options")
         if files:
             corpus = load_documents(files)
             st.session_state["corpus"] = corpus
             st.session_state["doc_texts"] = [corpus[doc] for doc in corpus]
 
-            st.markdown("### 🔍 Sélection du document")
             all_doc_names = list(st.session_state["corpus"].keys())
             selected_doc = st.selectbox("📁 Choisissez un document lié :", all_doc_names, key="doc_syn")
 
-            # 📥 Source des événements
-            st.markdown("### 📥 Source des événements")
+           # 📥 Source des événements
             key_src_syn = "source_evt_synthese"
-            st.session_state.setdefault(key_src_syn, "Extraction mémoire session")
+            st.session_state.setdefault(key_src_syn, "Calculer extraction depuis document")
             source_evt = st.selectbox(
                 "Source :",
-                ["Extraction mémoire session", "Charger un TSV existant", "Calculer extraction"],
+                ["Calculer extraction depuis document", "Calculer extraction depuis un TSV"],
                 key=key_src_syn
             )
+
 
             # Marquer dirty si options changent
             _mark_dirty_if_options_changed(
@@ -522,11 +622,21 @@ elif view_mode == "Synthèse":
                     files_by_name = {f.name: f for f in files}
                     up = files_by_name.get(selected_doc)
 
-                    if source_evt == "Extraction mémoire session":
+
+
+                    if source_evt == "Calculer extraction depuis document":
                         df = st.session_state.get(key_df)
                         if df is None:
-                            st.warning("Aucune extraction mémorisée pour ce document.")
-                    elif source_evt == "Charger un TSV existant":
+                            if up is None:
+                                st.error("Impossible de retrouver le fichier uploadé.")
+                            else:
+                                file_bytes = up.getvalue()
+                                with st.spinner("Extraction des événements en cours..."):
+                                    df = run_extraction_cached(file_bytes, selected_doc)
+                                if df is not None:
+                                    st.session_state[key_df] = df
+                                    st.success("Extraction terminée et mémorisée.")
+                    elif source_evt == "Calculer extraction depuis un TSV":
                         tsv_file = st.file_uploader("Chargez un fichier .tsv", type=["tsv"], accept_multiple_files=False, key="tsv_syn")
                         if tsv_file is not None:
                             try:
@@ -535,16 +645,7 @@ elif view_mode == "Synthèse":
                                 st.success("TSV chargé et mémorisé.")
                             except Exception as e:
                                 st.error(f"Impossible de lire le TSV : {e}")
-                    else:  # Calculer extraction
-                        if up is None:
-                            st.error("Impossible de retrouver le fichier uploadé.")
-                        else:
-                            file_bytes = up.getvalue()
-                            with st.spinner("Extraction des événements en cours..."):
-                                df = run_extraction_cached(file_bytes, selected_doc)
-                            if df is not None:
-                                st.session_state[key_df] = df
-                                st.success("Extraction terminée et mémorisée.")
+                    
 
                 # Construction du rendu uniquement si df disponible
                 if df is not None and not df.empty:
@@ -569,8 +670,68 @@ elif view_mode == "Synthèse":
     if st.session_state["launch_flags"]["Synthèse"] and (formatted_text is not None):
         with col_graph:
             st.markdown("### Synthèse des événements")
-            st.text_area("", formatted_text, height=600, label_visibility="collapsed")
 
+            # 🔹 Clés de session
+            key_txt = f"edited_text_{selected_doc}"
+            key_df = f"df_{selected_doc}"
+
+            # 🔹 Charger le texte sauvegardé précédemment (ou celui calculé)
+            current_text = st.session_state.get(key_txt, formatted_text)
+
+            # 🔹 Zone de texte éditable
+            edited_text = st.text_area(
+                "",
+                value=current_text,
+                height=600,
+                label_visibility="collapsed",
+                key=f"textarea_{selected_doc}",
+            )
+
+            # 🔹 Fonction de parsing du texte libre en DataFrame
+            def parse_text_to_df(text):
+                import re
+                blocs = re.split(r"\n\s*\n", text.strip())
+                rows = []
+                for bloc in blocs:
+                    resume, lieu, moment, individus = "", "", "", ""
+                    for line in bloc.split("\n"):
+                        if line.lower().startswith("événement"):
+                            resume = line.split(":", 1)[-1].strip()
+                        elif line.lower().startswith("lieu"):
+                            lieu = line.split(":", 1)[-1].strip()
+                        elif line.lower().startswith("moment"):
+                            moment = line.split(":", 1)[-1].strip()
+                        elif line.lower().startswith("individus"):
+                            individus = line.split(":", 1)[-1].strip()
+                    if any([resume, lieu, moment, individus]):
+                        rows.append({
+                            "resume": resume,
+                            "lieu": lieu,
+                            "moment": moment,
+                            "individus": individus,
+                        })
+                return pd.DataFrame(rows)
+
+            # 🔹 Bouton de sauvegarde (texte + DataFrame synchronisé)
+            if st.button("💾 Sauvegarder les modifications", key=f"save_{selected_doc}"):
+                st.session_state[key_txt] = edited_text
+                try:
+                    new_df = parse_text_to_df(edited_text)
+                    if not new_df.empty:
+                        st.session_state[key_df] = new_df  # ✅ remplacera le DataFrame existant
+                        st.success("Modifications sauvegardées et synchronisées avec la carte.")
+                    else:
+                        st.warning("Le texte semble vide ou mal formaté — impossible de mettre à jour le DataFrame.")
+                except Exception as e:
+                    st.error(f"Erreur lors de la mise à jour du DataFrame : {e}")
+
+            # 🔹 Petit texte explicatif
+            st.markdown(
+                "<p style='color:black; font-size:13px;'>Vous pouvez modifier ce fichier descriptif des événements et enregistrer ces modifications. Ces changements seront visibles dans la carte des événements.</p>",
+                unsafe_allow_html=True,
+            )
+
+            # 🔹 Téléchargement TSV (inchangé)
             if tsv_bytes is not None and tsv_name is not None:
                 st.download_button(
                     label="💾 Télécharger le TSV des événements",
@@ -578,6 +739,7 @@ elif view_mode == "Synthèse":
                     file_name=tsv_name,
                     mime="text/tab-separated-values",
                 )
+
     elif view_mode == "Synthèse":
         with col_graph:
             st.info("Réglez les options puis cliquez sur 🚀 **Lancer la vue** pour afficher la synthèse.")
@@ -589,26 +751,27 @@ elif view_mode == "Carte":
     selected_person = ""
 
     with col2:
+        st.markdown("### ⚙️ Paramètres et options")
         if files:
             corpus = load_documents(files)
             st.session_state["corpus"] = corpus
 
-            st.markdown("### 🔍 Sélection du document")
             all_doc_names = list(corpus.keys())
             selected_doc = st.selectbox("📁 Choisissez un document lié :", all_doc_names, key="doc_map")
 
-            # 📥 Source des événements
-            st.markdown("### 📥 Source des événements")
+           # 📥 Source des événements
             key_src_map = "source_evt_carte"
-            st.session_state.setdefault(key_src_map, "Extraction mémoire session")
+            st.session_state.setdefault(key_src_map, "Calculer extraction depuis document")
             source_evt = st.selectbox(
                 "Source :",
-                ["Extraction mémoire session", "Charger un TSV existant", "Calculer extraction"],
+                ["Calculer extraction depuis document", "Calculer extraction depuis un TSV"],
                 key=key_src_map
             )
 
+                   
+
+
             # 🧭 Mode d’affichage
-            st.markdown("### 🧭 Mode d’affichage")
             key_mode_map = "mode_carte"
             st.session_state.setdefault(key_mode_map, "Trajectoire globale")
             mode_affichage = st.selectbox(
@@ -618,17 +781,15 @@ elif view_mode == "Carte":
             )
 
             # 🎬 Visualisation
-            st.markdown("### 🎬 Visualisation")
-            key_visu_map = "visu_carte"
-            st.session_state.setdefault(key_visu_map, "Statique")
-            mode_visu = st.selectbox(
-                "Type d’affichage :",
-                ["Statique", "Dynamique"],
-                key=key_visu_map,
-            )
+            # key_visu_map = "visu_carte"
+            # st.session_state.setdefault(key_visu_map, "Statique")
+            # mode_visu = st.selectbox(
+            #     "Type d’affichage :",
+            #     ["Statique", "Dynamique"],
+            #     key=key_visu_map,
+            # )
 
             # 🎨 Style de la carte — APPARAÎT ICI (à droite) ET S'APPLIQUE AUX 2 MODES
-            st.markdown("### 🎨 Style de la carte")
             key_style_map = "style_carte"
             st.session_state.setdefault(key_style_map, "Clair")
             style_choice = st.selectbox(
@@ -662,11 +823,19 @@ elif view_mode == "Carte":
                     files_by_name = {f.name: f for f in files}
                     up = files_by_name.get(selected_doc)
 
-                    if source_evt == "Extraction mémoire session":
+                    if source_evt == "Calculer extraction depuis document":
                         df = st.session_state.get(key_df)
                         if df is None:
-                            st.warning("Aucune extraction mémorisée pour ce document.")
-                    elif source_evt == "Charger un TSV existant":
+                            if up is None:
+                                st.error("Impossible de retrouver le fichier uploadé.")
+                            else:
+                                file_bytes = up.getvalue()
+                                with st.spinner("Extraction des événements en cours..."):
+                                    df = run_extraction_cached(file_bytes, selected_doc)
+                                if df is not None:
+                                    st.session_state[key_df] = df
+                                    st.success("Extraction terminée et mémorisée.")
+                    elif source_evt == "Calculer extraction depuis un TSV":
                         tsv_file = st.file_uploader("Chargez un fichier .tsv", type=["tsv"], accept_multiple_files=False, key="tsv_map")
                         if tsv_file is not None:
                             try:
@@ -674,17 +843,9 @@ elif view_mode == "Carte":
                                 st.session_state[key_df] = df
                                 st.success("TSV chargé et mémorisé.")
                             except Exception as e:
-                                st.error(f"Impossible de lire le TSV : {e}")
-                    else:  # Calculer extraction
-                        if up is None:
-                            st.error("Impossible de retrouver le fichier uploadé.")
-                        else:
-                            file_bytes = up.getvalue()
-                            with st.spinner("Extraction des événements en cours..."):
-                                df = run_extraction_cached(file_bytes, selected_doc)
-                            if df is not None:
-                                st.session_state[key_df] = df
-                                st.success("Extraction terminée et mémorisée.")
+                                st.error(f"Impossible de lire le TSV : {e}")               
+
+                  
 
             # Construction / affichage de la carte APRES lancement
             if st.session_state["launch_flags"]["Carte"]:
@@ -713,6 +874,7 @@ elif view_mode == "Carte":
                             idx_key = f"idx_dyn_{selected_doc}_{selected_person}"
 
                     # --- STATIQUE (PyDeck fluide) ---
+                    
                     if mode_visu == "Statique":
                         events_key = f"{selected_doc}|{mode_affichage}|{selected_person}|{len(events)}"
                         df_points = build_points_df_cached(events_key, events, geocoder_lieu)
@@ -758,7 +920,7 @@ elif view_mode == "Carte":
                             )
 
                             with col_graph:
-                                st.markdown("### 🗺️ Carte des événements (PyDeck fluide)")
+                                st.markdown("### 🗺️ Carte des événements")
                                 st.pydeck_chart(deck, use_container_width=True)
 
                     # --- DYNAMIQUE (pydeck) : fluide + Animation Start/Stop par time.sleep ---
@@ -853,21 +1015,32 @@ elif view_mode == "Carte":
                                     selected_style_uri=selected_style_uri,
                                 )
 
-                                with col_graph:
-                                    st.markdown("### 🗺️ Carte des événements (dynamique)")
-                                    if deck is not None:
-                                        st.pydeck_chart(deck, use_container_width=True, key=f"deck_{idx_key}")
-                                    else:
-                                        st.info("Impossible de construire la vue dynamique (aucun point).")
+                            with col_graph:
+                                
+                                st.markdown("### 🗺️ Carte des événements (dynamique)")
 
-                                # Boucle d'animation
+                                map_container = st.empty()  # ✅ conteneur persistant pour mise à jour fluide
+                                if deck is not None:
+                                    map_container.pydeck_chart(deck, use_container_width=True)
+                                else:
+                                    st.info("Impossible de construire la vue dynamique (aucun point).")
+
+                                # ✅ Boucle d'animation fluide (sans rerun complet)
                                 if st.session_state[anim_run_key] and total_pts > 1:
-                                    if st.session_state[anim_skip_key]:
-                                        st.session_state[anim_skip_key] = False
-                                    else:
-                                        time.sleep(int(st.session_state[anim_delay_key]) / 1000.0)
-                                        st.session_state[idx_key] = (st.session_state[idx_key] + 1) % total_pts
-                                    st.rerun()
+                                    delay = int(st.session_state[anim_delay_key]) / 1000.0
+                                    for step in range(st.session_state[idx_key], total_pts):
+                                        df_points["is_current"] = (df_points["idx"] == (step + 1))
+                                        deck = _build_pydeck_dynamic_from_df(
+                                            df_points,
+                                            idx_zero_based=step,
+                                            center=st.session_state[center_key],
+                                            zoom=st.session_state[zoom_key],
+                                            selected_style_uri=selected_style_uri,
+                                        )
+                                        map_container.pydeck_chart(deck, use_container_width=True)
+                                        time.sleep(delay)
+                                    st.session_state[anim_run_key] = False
+
         else:
             with col_graph:
                 st.info("Veuillez charger des documents puis cliquer sur 🚀 **Lancer la vue**.")
