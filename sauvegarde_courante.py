@@ -1,3 +1,5 @@
+
+
 # -*- coding: utf-8 -*-
 
 ############################
@@ -16,7 +18,7 @@ from PIL import Image
 import streamlit as st
 import streamlit.components.v1 as components
 from streamlit_folium import st_folium
-import folium  # ← fallback sécurisé si besoin
+import folium  # ← nécessaire pour gardes de type / fallback
 import pydeck as pdk
 
 from data_loader import load_documents
@@ -167,20 +169,8 @@ def _list_individus(df_: pd.DataFrame):
                 s.add(p)
     return sorted(s)
 
-# ---- Styles Mapbox disponibles ----
-MAPBOX_STYLE_OPTIONS = {
-    "Clair": "mapbox://styles/mapbox/light-v11",
-    "Sombre": "mapbox://styles/mapbox/dark-v11",
-    "Extérieur": "mapbox://styles/mapbox/outdoors-v12",
-    "Satellite": "mapbox://styles/mapbox/satellite-streets-v12",
-}
-
-def _get_mapbox_style(selected_style_uri: str | None = None):
-    """
-    Si une clé Mapbox est disponible (st.secrets ou variable d'env),
-    fixe MAPBOX_API_KEY dans os.environ (requis par pydeck) et renvoie
-    l'URI de style choisi. Sinon, renvoie None (fond neutre).
-    """
+def _get_mapbox_style():
+    # Utilise le fond mapbox si la clé est dispo, sinon None (fond neutre)
     token = None
     try:
         token = st.secrets.get("MAPBOX_API_KEY")
@@ -189,7 +179,7 @@ def _get_mapbox_style(selected_style_uri: str | None = None):
     token = token or os.environ.get("MAPBOX_API_KEY")
     if token:
         os.environ["MAPBOX_API_KEY"] = token
-        return selected_style_uri or "mapbox://styles/mapbox/light-v11"
+        return "mapbox://styles/mapbox/light-v11"
     return None
 
 @st.cache_data
@@ -218,13 +208,7 @@ def build_points_df_cached(events_key: str, events: list, _geocoder_lieu):
         })
     return pd.DataFrame(rows)
 
-def _build_pydeck_dynamic_from_df(
-    df_points: pd.DataFrame,
-    idx_zero_based: int,
-    center: tuple[float,float],
-    zoom: int,
-    selected_style_uri: str | None
-):
+def _build_pydeck_dynamic_from_df(df_points: pd.DataFrame, idx_zero_based: int, center: tuple[float,float], zoom: int):
     """
     Vue dynamique pydeck :
     - Tous les points (gris)
@@ -282,7 +266,7 @@ def _build_pydeck_dynamic_from_df(
     return pdk.Deck(
         layers=[layer_base, layer_current],
         initial_view_state=view_state,
-        map_style=_get_mapbox_style(selected_style_uri),
+        map_style=_get_mapbox_style(),
         tooltip=tooltip,
     )
 
@@ -331,6 +315,7 @@ if view_mode == "Graphe des concepts":
 
         # Paramètres
         threshold, n_top = None, None
+        # (on garde le slider / number_input comme avant)
         if search_method == "Recherche sémantique":
             threshold = st.slider("Seuil de similarité", 0.0, 1.0, 0.5, step=0.01)
         elif search_method == "Top recherche sémantique":
@@ -491,7 +476,7 @@ elif view_mode == "Synthèse":
             all_doc_names = list(st.session_state["corpus"].keys())
             selected_doc = st.selectbox("📁 Choisissez un document lié :", all_doc_names, key="doc_syn")
 
-            # 📥 Source des événements
+            # Remplacement radio → selectbox
             st.markdown("### 📥 Source des événements")
             key_src_syn = "source_evt_synthese"
             st.session_state.setdefault(key_src_syn, "Extraction mémoire session")
@@ -597,7 +582,7 @@ elif view_mode == "Carte":
             all_doc_names = list(corpus.keys())
             selected_doc = st.selectbox("📁 Choisissez un document lié :", all_doc_names, key="doc_map")
 
-            # 📥 Source des événements
+            # Remplacement radio → selectbox
             st.markdown("### 📥 Source des événements")
             key_src_map = "source_evt_carte"
             st.session_state.setdefault(key_src_map, "Extraction mémoire session")
@@ -607,7 +592,6 @@ elif view_mode == "Carte":
                 key=key_src_map
             )
 
-            # 🧭 Mode d’affichage
             st.markdown("### 🧭 Mode d’affichage")
             key_mode_map = "mode_carte"
             st.session_state.setdefault(key_mode_map, "Trajectoire globale")
@@ -617,7 +601,6 @@ elif view_mode == "Carte":
                 key=key_mode_map,
             )
 
-            # 🎬 Visualisation
             st.markdown("### 🎬 Visualisation")
             key_visu_map = "visu_carte"
             st.session_state.setdefault(key_visu_map, "Statique")
@@ -627,17 +610,6 @@ elif view_mode == "Carte":
                 key=key_visu_map,
             )
 
-            # 🎨 Style de la carte — APPARAÎT ICI (à droite) ET S'APPLIQUE AUX 2 MODES
-            st.markdown("### 🎨 Style de la carte")
-            key_style_map = "style_carte"
-            st.session_state.setdefault(key_style_map, "Clair")
-            style_choice = st.selectbox(
-                "Style :",
-                list(MAPBOX_STYLE_OPTIONS.keys()),
-                key=key_style_map
-            )
-            selected_style_uri = MAPBOX_STYLE_OPTIONS.get(style_choice, MAPBOX_STYLE_OPTIONS["Clair"])
-
             # Marque dirty si options changent
             _mark_dirty_if_options_changed(
                 "Carte",
@@ -646,7 +618,6 @@ elif view_mode == "Carte":
                 source_evt=source_evt,
                 mode_affichage=mode_affichage,
                 mode_visu=mode_visu,
-                style_choice=style_choice,
             )
 
             # Bouton de lancement
@@ -747,8 +718,7 @@ elif view_mode == "Carte":
                                 "style": {"backgroundColor": "white", "color": "black"}
                             }
 
-                            # Style Mapbox sélectionné (appliqué ici)
-                            map_style = _get_mapbox_style(selected_style_uri)
+                            map_style = _get_mapbox_style() or "mapbox://styles/mapbox/light-v11"
 
                             deck = pdk.Deck(
                                 layers=[layer_points],
@@ -850,7 +820,6 @@ elif view_mode == "Carte":
                                     idx_zero_based=st.session_state[idx_key],
                                     center=st.session_state[center_key],
                                     zoom=st.session_state[zoom_key],
-                                    selected_style_uri=selected_style_uri,
                                 )
 
                                 with col_graph:

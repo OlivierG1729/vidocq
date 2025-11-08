@@ -35,12 +35,13 @@ def display_graph(G):
 
         net.add_node(
             node,
-            label=node,
+            label=data.get("label", node),
             color=color,
             size=size,
-            title="Concept" if group == 0 else "Document",
+            title=f"{'Concept' if group == 0 else 'Document'} — degré : {G.degree(node)}",
             shape="dot"
         )
+
 
     for source, target in G.edges():
         net.add_edge(source, target)

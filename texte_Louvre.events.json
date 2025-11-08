@@ -1,0 +1,174 @@
+[
+  {
+    "ou": "Paris",
+    "quand": "mercredi",
+    "qui": [
+      "Deux personnes, âgées de 37 ans et 38 ans",
+      "trois autres suspects"
+    ],
+    "quoi": "Interpellation des deux personnes dans l'enquête sur le casse du Louvre"
+  },
+  {
+    "ou": "France Info",
+    "quand": "dimanche",
+    "qui": [
+      "Mme Beccuau",
+      "l'homme de 37 ans"
+    ],
+    "quoi": "Interrogation de Mme Beccuau sur France Info"
+  },
+  {
+    "ou": "Paris",
+    "quand": "samedi",
+    "qui": [
+      "Laure Beccuau"
+    ],
+    "quoi": "Communication de la procureure de Paris sur les deux personnes mises en examen"
+  },
+  {
+    "ou": "Paris",
+    "quand": "dimanche matin",
+    "qui": [
+      "Laure Beccuau"
+    ],
+    "quoi": "Déclaration de Mme Beccuau sur le premier mis en cause et ses liens avec le commando qui a commis le cambriolage"
+  },
+  {
+    "ou": "Paris",
+    "quand": "samedi",
+    "qui": [
+      "Laure Beccuau"
+    ],
+    "quoi": "Déclaration de Mme Beccuau sur la mise en examen du premier mis en cause et ses conditions d'incarcération"
+  },
+  {
+    "ou": "Paris",
+    "quand": "2015",
+    "qui": [
+      "les suspects"
+    ],
+    "quoi": "Condamnation des suspects"
+  },
+  {
+    "ou": "La Courneuve, Seine-Saint-Denis",
+    "quand": "",
+    "qui": [
+      "la compagne du suspect",
+      "sa famille"
+    ],
+    "quoi": "Mise en examen pour complicité de vol et association de malfaiteurs"
+  },
+  {
+    "ou": "Paris",
+    "quand": "",
+    "qui": [
+      "le juge des libertés et de la détention",
+      "le parquet"
+    ],
+    "quoi": "Placement en détention provisoire de la compagne du suspect"
+  },
+  {
+    "ou": "Dans le cadre d'une garde à vue",
+    "quand": "",
+    "qui": [
+      "les deux suspects"
+    ],
+    "quoi": "Négation de leur implication dans le vol"
+  },
+  {
+    "ou": "Aubervilliers, Seine-Saint-Denis",
+    "quand": "29 octobre",
+    "qui": [
+      "les trois autres personnes interpellées"
+    ],
+    "quoi": "Levée des gardes à vue"
+  },
+  {
+    "ou": "Mercredi soir",
+    "quand": "",
+    "qui": [
+      "les deux trentenaires"
+    ],
+    "quoi": "Mise en examen et placement en détention provisoire"
+  },
+  {
+    "ou": "Aéroport de Roissy",
+    "quand": "",
+    "qui": [
+      "un des suspects"
+    ],
+    "quoì": "Arrêté lors d'un départ pour l'Algérie"
+  },
+  {
+    "ou": "Aubervilliers, Seine-Saint-Denis",
+    "quand": "",
+    "qui": [
+      "l'autre suspect"
+    ],
+    "quoi": "Arrêté à Aubervilliers"
+  },
+  {
+    "ou": "France Info",
+    "quand": "Dimanche",
+    "qui": [
+      "Mme Beccuau"
+    ],
+    "quoi": "Déclarations sur les possibles complices et les véhicules relais"
+  },
+  {
+    "ou": "Louvre",
+    "quand": "casse (date non spécifiée)",
+    "qui": [
+      "quatre malfaiteurs"
+    ],
+    "quoi": "Vol de bijoux et intrusion dans la galerie d'Apollon"
+  },
+  {
+    "ou": "Office central de lutte contre le trafic des biens culturels",
+    "quand": "date non spécifiée",
+    "qui": [
+      "procureure"
+    ],
+    "quoi": "Exploration de marchés parallèles pour trouver les bijoux"
+  },
+  {
+    "ou": "Ministère de l'intérieur",
+    "quand": "samedi (date non spécifiée)",
+    "qui": [
+      "ministre Laurent Nuñez"
+    ],
+    "quoi": "Déclaration sur la sécurité du Louvre et le blanchiment"
+  },
+  {
+    "ou": "Parisien",
+    "quand": "samedi (date non spécifiée)",
+    "qui": [
+      "ministre Laurent Nuñez"
+    ],
+    "quoi": "Entretien accordé au Parisien"
+  },
+  {
+    "ou": "Inspection générale des affaires culturelles",
+    "quand": "vendredi (date non spécifiée)",
+    "qui": [
+      "ministre Rachida Dati"
+    ],
+    "quoi": "Dévoilement des premières conclusions de l'enquête"
+  },
+  {
+    "ou": "Louvre",
+    "quand": "date non spécifiée",
+    "qui": [
+      "ministre Rachida Dati"
+    ],
+    "quoi": "Announcement of measures to respond to a 'major security breach'"
+  },
+  {
+    "ou": "musée",
+    "quand": "",
+    "qui": [
+      "une personne non identifiée"
+    ],
+    "quoi": "Mise en place de dispositifs anti-voitures-béliers et anti-intrusion au musée"
+  }
+]

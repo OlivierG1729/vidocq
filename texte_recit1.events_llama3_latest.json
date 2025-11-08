@@ -1,0 +1,133 @@
+[
+  {
+    "ou": "12, rue de Sèvres à Paris (6ᵉ)",
+    "quand": "Lundi 3 mars 8h15",
+    "qui": [
+      "Marie Lefort",
+      "Alain Dubreuil"
+    ],
+    "quoi": "Rendez-vous entre la journaliste et le commissaire"
+  },
+  {
+    "ou": "12, rue de Sèvres à Paris (6ᵉ)",
+    "quand": "Lundi 3 mars 9h20",
+    "qui": [
+      "DGSI"
+    ],
+    "quoi": "Véhicule de la DGSI quitte les lieux"
+  },
+  {
+    "ou": "18, avenue de la République à Nanterre",
+    "quand": "Lundi 3 mars vers 10h00",
+    "qui": [
+      "Julien Perrin"
+    ],
+    "quoi": "Arrêté à son domicile en qualité d'assistant parlementaire"
+  },
+  {
+    "ou": "hôtel Mercure de Lille",
+    "quand": "non spécifié",
+    "qui": [
+      "DGSI",
+      "Gendarmerie",
+      "deux suspects étrangers"
+    ],
+    "quoi": "Opération conjointe DGSI-Gendarmerie, interpellation de deux suspects étrangers"
+  },
+  {
+    "ou": "rue du Bailli à Bruxelles",
+    "quand": "non spécifié",
+    "qui": [
+      "contact situé à Bruxelles"
+    ],
+    "quoi": "Révélation de plusieurs messages téléphoniques"
+  },
+  {
+    "ou": "78, boulevard du Midi à Marseille",
+    "quand": "non spécifié",
+    "qui": [
+      "société écran"
+    ],
+    "quoi": "Existence d'un financement en provenance"
+  },
+  {
+    "ou": "Matignon",
+    "quand": "Mercredi 5 mars à 17h",
+    "qui": [
+      "Premier ministre",
+      "ministres"
+    ],
+    "quoi": "Réunion du conseil restreint au Premier ministre"
+  },
+  {
+    "ou": "Élysée",
+    "quand": "19h30",
+    "qui": [
+      "l'Élysée"
+    ],
+    "quoi": "Déclaration officielle d'une menace cyber nationale"
+  },
+  {
+    "ou": "15, rue des Archives à Paris",
+    "quand": "Jeudi 6 mars",
+    "qui": [
+      "Juge Claire Roussel"
+    ],
+    "quoi": "Mise sous scellés de plusieurs ordinateurs"
+  },
+  {
+    "ou": "Centre pénitentiaire de Fresnes",
+    "quand": "Lendemain du jeudi 6 mars",
+    "qui": [
+      "Suspect Perrin"
+    ],
+    "quoi": "Transfert du suspect"
+  },
+  {
+    "ou": "23, rue du Chemin Vert à Montreuil",
+    "quand": "Vendredi 7 mars à 22h10",
+    "qui": [],
+    "quoi": "Incendie volontaire dans un entrepôt"
+  },
+  {
+    "ou": "Seine-Saint-Denis",
+    "quand": "Samedi matin",
+    "qui": [
+      "les pompiers de Seine-Saint-Denis"
+    ],
+    "quoi": "Confirme la présence d'un accélérant dans les décombres"
+  },
+  {
+    "ou": "Seine-Saint-Denis",
+    "quand": "15h00, Samedi",
+    "qui": [
+      "le ministre Vautrin",
+      "le préfet Martin Deschamps"
+    ],
+    "quoi": "Le ministre et le préfet se rendent sur place"
+  },
+  {
+    "ou": "Strasbourg",
+    "quand": "Dimanche 9 mars",
+    "qui": [
+      "la présidente de la République"
+    ],
+    "quoi": "Création d'une cellule spéciale de suivi"
+  },
+  {
+    "ou": "",
+    "quand": "Lundi 10 mars à 9h",
+    "qui": [
+      "le Parquet national antiterroriste (PNAT)"
+    ],
+    "quoi": "Transmission d'un rapport confidentiel"
+  },
+  {
+    "ou": "gare de Lyon",
+    "quand": "pas spécifié",
+    "qui": [
+      "une personne (non précisée)"
+    ],
+    "quoi": "arrêté"
+  }
+]

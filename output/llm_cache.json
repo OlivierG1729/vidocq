@@ -1,0 +1,16 @@
+{
+  "texte_louvre.txt::la courneuve": null,
+  "texte_louvre.txt::république de paris": {
+    "resume": "Two suspects aged 37 and 38 in the Louvre theft case were placed under investigation on Wednesday, November 1st, as announced by Laure Beccuau, prosecutor of the Republic of Paris.",
+    "personnes": [
+      "Laure Beccuau"
+    ],
+    "moment": "Wednesday, November 1st"
+  },
+  "texte_louvre.txt::seine-saint-denis": null,
+  "doc1::marseille": {
+    "resume": "Accident survenu à Marseille le 5 mai 2023",
+    "personnes": [],
+    "moment": "accident le 5 mai 2023"
+  }
+}

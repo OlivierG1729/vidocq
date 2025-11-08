@@ -1,0 +1,72 @@
+[
+  {
+    "document": "texte_Louvre.txt",
+    "location": "la courneuve",
+    "summary": "Événement au lieu « La Courneuve » détecté.",
+    "people": [],
+    "moment": ""
+  },
+  {
+    "document": "texte_Louvre.txt",
+    "location": "république de paris",
+    "summary": "Événement au lieu « République de Paris » détecté.",
+    "people": [],
+    "moment": ""
+  },
+  {
+    "document": "texte_Louvre.txt",
+    "location": "seine-saint-denis",
+    "summary": "Événement au lieu « Seine-Saint-Denis » détecté.",
+    "people": [],
+    "moment": ""
+  },
+  {
+    "document": "texte_Louvre.txt",
+    "location": "algérie",
+    "summary": "Événement au lieu « Algérie » détecté.",
+    "people": [],
+    "moment": ""
+  },
+  {
+    "document": "texte_Louvre.txt",
+    "location": "musée du louvre",
+    "summary": "Événement au lieu « Musée du Louvre » détecté.",
+    "people": [],
+    "moment": ""
+  },
+  {
+    "document": "texte_Louvre.txt",
+    "location": "roissy",
+    "summary": "Événement au lieu « Roissy » détecté.",
+    "people": [],
+    "moment": ""
+  },
+  {
+    "document": "texte_Louvre.txt",
+    "location": "paris",
+    "summary": "Événement au lieu « Paris » détecté.",
+    "people": [],
+    "moment": ""
+  },
+  {
+    "document": "texte_Louvre.txt",
+    "location": "louvre",
+    "summary": "Événement au lieu « Louvre » détecté.",
+    "people": [],
+    "moment": ""
+  },
+  {
+    "document": "texte_Louvre.txt",
+    "location": "parisien",
+    "summary": "Événement au lieu « Parisien » détecté.",
+    "people": [],
+    "moment": ""
+  },
+  {
+    "document": "texte_Louvre.txt",
+    "location": "aubervilliers",
+    "summary": "Événement au lieu « Aubervilliers » détecté.",
+    "people": [],
+    "moment": ""
+  }
+]

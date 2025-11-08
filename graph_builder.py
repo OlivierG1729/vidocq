@@ -10,11 +10,22 @@ import networkx as nx
 
 def build_graph(concept_to_docs):
     G = nx.Graph()
+
+    # --- Construction bipartite ---
     for concept, docs in concept_to_docs.items():
         G.add_node(concept, bipartite=0)
         for doc in docs:
             G.add_node(doc, bipartite=1)
             G.add_edge(concept, doc)
+
+    # --- Ajout du degré au label pour les documents ---
+    for node, data in G.nodes(data=True):
+        deg = G.degree(node)
+        if data.get("bipartite") == 1:
+            data["label"] = f"{node} ({deg})"
+        else:
+            data["label"] = node
+
     return G
 
 

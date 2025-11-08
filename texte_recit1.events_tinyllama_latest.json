@@ -1,0 +1,26 @@
+[
+  {
+    "ou": "lieu précis (ville, adresse, lieu public...)",
+    "quand": "date ou heure (format textuel libre)",
+    "qui": [
+      "personnes ou groupes implémentés"
+    ],
+    "quoi": "résumé très concis de l'évènement"
+  },
+  {
+    "ou": "localidad (ciudad, municipio, provincia...)",
+    "qua": "fecha o hora específica (formato texto libre)",
+    "qui": [
+      "personas o grupos implícitas"
+    ],
+    "quoi": "resumen corto de la ocurrencia"
+  },
+  {
+    "ou": "lieu précis (ville, adresse, lieu public...)",
+    "quand": "date ou heure (format textuel libre)",
+    "qui": [
+      "personnes ou groupes implémentés"
+    ],
+    "quoi": "résumé très concís de l'événement"
+  }
+]

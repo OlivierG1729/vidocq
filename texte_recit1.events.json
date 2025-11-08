@@ -1,0 +1,99 @@
+[
+  {
+    "ou": "12, rue de Sèvres à Paris (6ᵉ)",
+    "quand": "Lundi 3 mars à 8h15",
+    "qui": [
+      "Marie Lefort",
+      "Alain Dubreuil"
+    ],
+    "quoi": "Réunion entre Marie Lefort et Alain Dubreuil"
+  },
+  {
+    "ou": "12, rue de Sèvres à Paris (6ᵉ)",
+    "quand": "Vers 9h20",
+    "qui": [
+      "DGSI"
+    ],
+    "quoi": "Véhicule de la DGSI quitte les lieux"
+  },
+  {
+    "ou": "18, avenue de la République à Nanterre",
+    "quand": "Vers 10h00",
+    "qui": [
+      "Julien Perrin"
+    ],
+    "quoi": "Arrêt de Julien Perrin"
+  },
+  {
+    "ou": "Assemblée nationale",
+    "quand": "11h30",
+    "qui": [
+      "enquêteurs",
+      "juge Claire Roussel"
+    ],
+    "quoi": "perquisition du bureau"
+  },
+  {
+    "ou": "7, place Beauvau",
+    "quand": "14h10 (le même jour)",
+    "qui": [
+      "ministre de l’Intérieur Marc Vautrin"
+    ],
+    "quoi": "conférence de presse pour confirmer enquête interne"
+  },
+  {
+    "ou": "22, rue du Docteur Roux à Lyon",
+    "quand": "soirée (pas de date précise)",
+    "qui": [
+      "société Cybrix Sécurité"
+    ],
+    "quoi": "tente d’intrusion dans ses serveurs"
+  },
+  {
+    "ou": "",
+    "quand": "mardi 4 mars à 6h45",
+    "qui": [],
+    "quoi": ""
+  },
+  {
+    "ou": "Seine-Saint-Denis",
+    "quand": "Samedi matin",
+    "qui": [
+      "Pompiers de Seine-Saint-Denis"
+    ],
+    "quoi": "Découverte d'un accélérant dans les décombres"
+  },
+  {
+    "ou": "Seine-Saint-Denis",
+    "quand": "15h00, Samedi",
+    "qui": [
+      "Ministre Vautrin",
+      "Préfet Martin Deschamps"
+    ],
+    "quoi": "Rendu sur place du ministre et du préfet"
+  },
+  {
+    "ou": "Strasbourg",
+    "quand": "Dimanche 9 mars",
+    "qui": [
+      "Présidente de la République"
+    ],
+    "quoi": "Création d'une cellule spéciale de suivi"
+  },
+  {
+    "ou": "",
+    "quand": "Lundi 10 mars à 9h",
+    "qui": [
+      "Parquet national antiterroriste (PNAT)"
+    ],
+    "quoi": "Transmission d'un rapport confidentiel"
+  },
+  {
+    "ou": "Gare de Lyon",
+    "quand": "pas de date spécifiée",
+    "qui": [
+      "personne inconnue"
+    ],
+    "quoi": "Arrêté à la gare"
+  }
+]

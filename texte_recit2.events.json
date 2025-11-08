@@ -1,0 +1,19 @@
+[
+  {
+    "ou": "12, rue de Sèvres à Paris (6ᵉ)",
+    "quand": "Lundi 3 mars à 8h15",
+    "qui": [
+      "Marie Lefort",
+      "Alain Dubreuil"
+    ],
+    "quoi": "Rencontre entre Marie Lefort et Alain Dubreuil"
+  },
+  {
+    "ou": "",
+    "quand": "9h20",
+    "qui": [
+      "DGSI"
+    ],
+    "quoi": "Départ d'un véhicule de la DGSI en direction du 36, quai des Orfèvres"
+  }
+]
