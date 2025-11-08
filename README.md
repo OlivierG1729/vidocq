@@ -1,93 +1,147 @@
-# Application VIDOCQ (VIsualisation de DOCuments par Questionnement
 
+# Application VIDOCQ (VIsualisation de DOCuments par Questionnement)
 
 ![Exemple de capture d’écran](logos/vidocq_logo.png)
 
-
-
 L'application VIDOCQ propose différents visuels destinés à appréhender de façon rapide un corpus de documents.
 
-Actuellement, l'application propose deux fonctionnalités :
+Actuellement, l'application propose quatre fonctionnalités principales :
 
-**1. Recherche de concepts dans un corpus de documents et visualisation par graphe dynamique** 
+---
 
-L'utilisateur importe un corpus de documents (fichiers .txt pour le moment, à venir : .csv et .pdf), renseigne des concepts par des mots-clés séparés par des virgules. Il choisit également une méthode de recherche, et ajuste les valeurs des paramètres de cette méthode. Un graphe apparait alors, composés de deux types de noeuds : les documents et les concepts. Un noeud-concept et un noeud-document sont reliés par une arête si et seulement si ce concept apparaît dans ce document. Ce graphe est dynamique, il est possible de déplacer ses noeuds, agir la taille des arêtes etc. Il est possible de le sauvegarder au format .html (pour une version dynamique) ou .png (pour une version statique).
+### **1. Recherche de concepts dans un corpus de documents et visualisation par graphe dynamique**
+
+L'utilisateur importe un corpus de documents (fichiers .txt pour le moment, à venir : .csv et .pdf), renseigne des concepts par des mots-clés séparés par des virgules. Il choisit également une méthode de recherche, et ajuste les valeurs des paramètres de cette méthode.  
+Un graphe apparait alors, composé de deux types de nœuds : les documents et les concepts.  
+Un nœud-concept et un nœud-document sont reliés par une arête si et seulement si ce concept apparaît dans ce document.  
+
+Ce graphe est **dynamique** : il est possible de déplacer ses nœuds, d’agir sur la taille des arêtes, etc.  
+Le graphe peut être sauvegardé au format `.html` (version interactive) ou `.png` (version statique).
 
 <p align="center">
   <img src="images/graphe_exemple.png" alt="Description" width="600">
 </p>
 
+---
 
-**2. Word cloud d'un corpus de documents**
+### **2. Word cloud d'un corpus de documents**
 
-L'utilisateur importe un corpus de documents (fichiers .txt pour le moment, à venir : .csv et .pdf), sélectionne un document dans ce corpus. Un nuage de mots apparaît, permettant une vision syntéhtique du texte.Le nombre de mots du nuage est ajustable. Un prétraitement du texte (tokenisation, stop words, stemming, lemmatisation) permet de supprimer les mots non signifiants ("la", "le", "des", "avec", "et", etc.) et les redondances ("ami" et "amies", "détecter", et "détection" etc.). 
+L'utilisateur importe un corpus de documents (fichiers .txt pour le moment, à venir : .csv et .pdf), puis sélectionne un document dans ce corpus.  
+Un **nuage de mots** apparaît, permettant une vision synthétique du texte.  
+Le nombre de mots affichés est ajustable. Un prétraitement du texte (tokenisation, suppression des stop words, stemming, lemmatisation) permet d’éliminer les mots non signifiants et les redondances (“ami/amies”, “détection/détecter”, etc.).
 
 <p align="center">
   <img src="images/nuage_mots_exemple.png" alt="Description" width="600">
 </p>
 
+---
 
-**3. Synthèse d'événements** 
+### **3. Synthèse d'événements**
 
-L'utilisateur choisit un fichier dans le corpus initialement chargé. En sélectionnant l'option de visualisation "Synthèse", on voit apparaître une extraction structurée d'événement sous la forme de blocs successifs à 4 items :
+L'utilisateur choisit un fichier dans le corpus initialement chargé.  
+En sélectionnant l'option de visualisation **“Synthèse”**, l’application affiche une **extraction structurée d’événements**, sous la forme de blocs successifs à quatre items :
 
-- un item *Evénement* qui résume en quelques mots un événement relaté dans le fichier importé
-- un item *Lieu* qui précise le lieu où s'est déroulé cet événement
-- un item *Moment* qui précise le moment auquel cet événement s'est déroulé
-- un item *Individus* qui précise les individus impliqués dans cet événement
+- un item *Événement* qui résume brièvement une action ou un fait relaté dans le texte,  
+- un item *Lieu* qui précise le lieu où s’est déroulé cet événement,  
+- un item *Moment* qui précise la date, l’heure ou le contexte temporel,  
+- un item *Individus* qui précise les personnes impliquées.
 
 <p align="center">
   <img src="images/synthese_exemple2.png" alt="Description" width="400">
 </p>
 
+---
 
-**4. Carte d'événements**
+### **4. Carte d'événements**
 
-L'utilisateur choisit un fichier dans le corpus initialement chargé. En sélectionnant l'option de visualisation "Carte", on voit apparaître une carte OpenSteetMap. Sur cette carte, figurent des points rouges qui correspondent aux localisations des différents événements mentionnés dans le document. 
+L'utilisateur choisit un fichier dans le corpus initialement chargé.  
+En sélectionnant l'option **“Carte”**, une carte **OpenStreetMap** apparaît, affichant des points rouges correspondant aux **localisations des événements** extraits du texte.
 
 <p align="center">
   <img src="images/carte_exemple.png" alt="Description" width="600">
 </p>
 
-
-Lorsque l'utilisateur clique sur l'un de ces points rouges, une petite fenêtre apparaît à côté. Cette fenêtre comporte un résumé de l'événement, le lieu de l'événement, le moment de l'événement, et les individus impliqués dans l'événement. Si plusieurs événements se sont déroulés au même lieux, alors la fenêtre mentionne tous ces événements en précisant tous les items correspondants.
+Lorsqu’on clique sur un point rouge, une fenêtre affiche les détails de l’événement (résumé, lieu, moment, individus).  
+Si plusieurs événements se sont déroulés au même endroit, tous apparaissent dans cette fenêtre.
 
 <p align="center">
   <img src="images/carte_exemple2.png" alt="Description" width="500">
 </p>
 
-Il est également possible d'opter pour une version dynamique de la carte des événements (globale ou par individu). Dans ce cas, l'animation peut se faire manuellement ou de manière automatique. La position courante (repérée par un point rouge) se déplace parmi l'ensemble de toutes les localisations des événements repérés dans le texte.
+Une **version dynamique** est également disponible : la carte peut être animée, globalement ou individuellement (par personne).  
+Le marqueur rouge se déplace alors selon la chronologie des faits extraits.
 
 <p align="center">
   <img src="images/carte_exemple3.png" alt="Description" width="500">
 </p>
 
+---
+
+## 🧠 Méthodologie d’extraction des événements
+
+L’extraction des faits repose sur une **pipeline d’analyse sémantique** articulée en plusieurs étapes, orchestrée dans le module `extraction_structuree.py`.
+
+### 1️⃣ Découpage du texte
+Chaque document (.txt) est d’abord **découpé automatiquement** en blocs de ~2000 caractères (avec un léger chevauchement).  
+Cette segmentation garantit un bon équilibre entre **contexte sémantique** et **limite de tokens**.
+
+### 2️⃣ Appel à un modèle de langage (LLM)
+Les blocs de texte sont ensuite envoyés à un **modèle de la famille LLaMA 3**, via l’API **Groq**, un service distant compatible OpenAI.  
+Deux modèles sont utilisés :
+
+| Modèle | Taille | Type | Lieu d’exécution | Rôle principal |
+|---------|---------|------|------------------|----------------|
+| `llama-3.1-8b-instant` | 8 milliards de paramètres | **LLM distant (Groq)** | Cloud Groq | Extraction rapide et peu coûteuse |
+| `llama-3.3-70b-versatile` | 70 milliards de paramètres | **LLM distant (Groq)** | Cloud Groq | Extraction plus fine et robuste |
+
+Ces modèles ne tournent **pas localement** : les requêtes sont envoyées à l’API Groq via une clé (`groq_key.txt`).  
+La configuration est compatible OpenAI (`base_url="https://api.groq.com/openai/v1"`).
+
+### 3️⃣ Extraction structurée au format TSV
+Le modèle reçoit un **prompt d’instructions** lui demandant d’extraire tous les faits du texte sous un format strict à 4 colonnes séparées par des tabulations :
+
+résumé lieu moment individus
 
 
-**A venir :** 
-
-- **Implémentation de nouvelles fonctionnalités :**
-
-  - **visualisation par timelines :** les événements extraits sont représentés par une frise chronologique.
- 
-  Ces visualisations peuvent avoir des applications intéressantes :
-
-    - détection d'incohérences sur les dates ou les lieux mentionnés (individus présents simultanément sur deux lieux distants par exemple)
-    - détection de patterns (événements ou comportements réccurents par exemple)
- 
-- **exploration d'images satellitaires :** les applications sont nombreuses :
-
-  - surveillance d'infrastructures : routes, aéroports, gares etc.
-  - analyse de routes et flux logistiques : observation d'axes d'acheminement maritime, terrestre ou fluvial
-  - différences d'images : la comparaison d'images d'une même zone observée à des moments différents permet de détecter de potentiels changements
-    
-
- - **Améliorations et extensions des fonctionnalités existantes :**
-   
-   - **extension à d'autres formats de fichiers** : pour le moment seuls les fichiers .txt sont autorisés. Ultérieurement, l'utilisateur pourra aussi charger des .csv et des .pdf
-   - **renforcement de la liberté de l'utilisateur :** il est prévu que l'utilisateur puisse valider ou invalider certaines informations du corpus, comme les éléments identifiant les individus (nom, prénom etc.),     les lieux, etc. L'idée est de créer un outil flexible et que l'utilisateur puisse toujours avoir le dernier mot.
+Le LLM doit respecter scrupuleusement ce format et ne renvoyer **aucun texte hors des marqueurs**.  
+Chaque ligne correspond à un fait élémentaire, par exemple :
 
 
+Accident de voiture rue Victor Hugo, Lyon 12 mai 2024 - 17h15 Paul Martin; Claire Dubois
+
+
+### 4️⃣ Parsing et stockage
+Le texte renvoyé est analysé, nettoyé, et converti en un **DataFrame pandas**.  
+Un mécanisme de **checkpoint** permet de sauvegarder les résultats au fur et à mesure, afin de reprendre le traitement en cas d’interruption.
+
+Les données finales sont exportées sous forme de fichiers `.tsv` :
+- `checkpoint_faits.tsv` (résultats intermédiaires)
+- `faits_extraits.tsv` (résultats finaux)
+
+### 5️⃣ Visualisation
+Les événements extraits alimentent directement les modules de **synthèse**, **graphe** et **cartographie**, offrant une lecture simultanée :
+- spatiale (sur carte),
+- temporelle (bientôt en timeline),
+- relationnelle (graphe de co-occurrence).
+
+---
+
+## 🚧 A venir
+
+- **Visualisation par timelines** : représentation chronologique des événements.  
+  Applications possibles :
+  - détection d’incohérences (présence simultanée d’un individu sur deux lieux distincts),
+  - repérage de schémas comportementaux ou de répétitions d’événements.
+
+- **Exploration d’images satellitaires** :  
+  - surveillance d’infrastructures (routes, aéroports, ports, etc.)  
+  - suivi logistique et observation de flux  
+  - détection de changements dans le temps (comparaison multi-temporelle)
+
+- **Extensions prévues :**
+  - support de nouveaux formats (.csv, .pdf)  
+  - validation manuelle des entités (individus, lieux, dates) par l’utilisateur  
+  - interface plus flexible et paramétrable
 
 
 
