@@ -3,7 +3,7 @@
 ############################
 # Application              #
 #                          #
-# Last update : 2025/11/08 #
+# Last update : 2025/11/10 #
 ############################
 
 import io
@@ -18,6 +18,7 @@ import streamlit.components.v1 as components
 from streamlit_folium import st_folium
 import folium  # ← fallback sécurisé si besoin
 import pydeck as pdk
+import json
 
 from data_loader import load_documents
 from concept_extractor import (
@@ -29,7 +30,6 @@ from graph_builder import build_graph
 from graph_display import display_graph, export_graph_image
 from word_cloud_builder import generate_wordcloud
 from table_builder import build_event_table
-
 from extraction_structuree import extraction_structuree
 from geocodage import geocoder_lieu
 from mapping_chrono import (
@@ -38,7 +38,11 @@ from mapping_chrono import (
     build_map_static,   # (toujours disponible si besoin du fallback Folium)
 )
 
-mode_visu = "Statique" # temporaire, dynamique désactivée pour l'instant
+# ✅ AJOUT VIDOCQ : extraction procédures
+from extraction_procedure import extraction_procedure
+
+
+mode_visu = "Statique"  # temporaire, dynamique désactivée pour l'instant
 
 # ====================================
 # CACHES & CONFIG
@@ -110,11 +114,20 @@ col1, col_graph, col2 = st.columns([4, 8, 4])
 
 with col1:
     st.markdown("### 📄 Corpus")
-    files = st.file_uploader("Chargez vos fichiers `.txt`", type="txt", accept_multiple_files=True)
+    # ✅ AJOUT VIDOCQ : prise en charge des formats .odt/.doc/.docx
+    files = st.file_uploader(
+        "Chargez vos fichiers (`.txt`, `.odt`, `.doc`, `.docx`)",
+        type=["txt", "odt", "doc", "docx"],
+        accept_multiple_files=True
+    )
 
 with col_graph:
     st.markdown("### 🌐 Visualisation")
-    view_mode = st.selectbox("Choisissez la vue :", ["Graphe des concepts", "Nuage de mots", "Synthèse", "Carte"])
+    # ✅ AJOUT VIDOCQ : ajout de la vue “Extractions informations procédure”
+    view_mode = st.selectbox(
+        "Choisissez la vue :",
+        ["Graphe des concepts", "Nuage de mots", "Synthèse", "Carte", "Extractions informations procédure"]
+    )
 
 # ====================================
 # ETAT : LANCEMENT MANUEL + “DIRTY” OPTIONS
@@ -127,6 +140,8 @@ if "launch_flags" not in st.session_state:
         "Carte": False,
         "Nuage de mots": False,
         "Graphe des concepts": False,
+        # ✅ AJOUT VIDOCQ : ajout du flag pour la nouvelle vue
+        "Extractions informations procédure": False,
     }
 
 # Dernières options vues (pour détecter les changements)
@@ -203,7 +218,6 @@ def geocode_cached(lieu: str):
     """
     return geocoder_lieu(lieu)
 
-
 @st.cache_data
 def build_points_df_cached(events_key: str, events: list, _geocoder_lieu):
     """
@@ -221,7 +235,6 @@ def build_points_df_cached(events_key: str, events: list, _geocoder_lieu):
         if not lieu:
             continue
 
-        # ✅ géocodage mis en cache : 100x plus rapide sur lieux déjà vus
         g = geocode_cached(lieu)
         if not g:
             continue
@@ -241,7 +254,6 @@ def build_points_df_cached(events_key: str, events: list, _geocoder_lieu):
 
     df = pd.DataFrame(rows)
 
-    # Tentative de conversion des moments en timestamps triables
     def _parse_moment_to_sortkey(moment):
         import re
         import datetime
@@ -263,19 +275,14 @@ def build_points_df_cached(events_key: str, events: list, _geocoder_lieu):
         return datetime.datetime.max
 
     df["sortkey"] = df["moment"].apply(_parse_moment_to_sortkey)
-
-    # Tri par lieu puis par date croissante
     df = df.sort_values(["lat", "lon", "sortkey"], ascending=True)
 
-    # Regroupement des événements par lieu
     grouped = []
     for (lat, lon, lieu), grp in df.groupby(["lat", "lon", "lieu"]):
         resumes = [r for r in grp["resume"] if r]
         moments = [m for m in grp["moment"] if m]
         individus = [i for i in grp["individus"] if i]
 
-        
-        # --- Nouveau format plus lisible et ordonné ---
         tooltip_html = f"<div style='max-height:300px; overflow-y:auto; padding:4px;'>"
         tooltip_html += f"<b>Lieu :</b> {lieu}<br/><hr style='border:0.5px solid #999;'/>"
 
@@ -317,16 +324,10 @@ def _build_pydeck_dynamic_from_df(
     zoom: int,
     selected_style_uri: str | None
 ):
-    """
-    Vue dynamique pydeck :
-    - Tous les points (gris)
-    - Point courant (rouge, plus gros)
-    - Taille min/max en pixels pour rester visible au dézoom
-    """
     if df_points.empty:
         return None
 
-    current_pos = idx_zero_based + 1  # 1..N
+    current_pos = idx_zero_based + 1
     max_idx = int(df_points["idx"].max())
     if current_pos > max_idx:
         current_pos = 1
@@ -336,7 +337,6 @@ def _build_pydeck_dynamic_from_df(
 
     view_state = pdk.ViewState(latitude=center[0], longitude=center[1], zoom=int(zoom), bearing=0, pitch=0)
 
-    # Tous les points
     layer_base = pdk.Layer(
         "ScatterplotLayer",
         data=df_points,
@@ -351,7 +351,6 @@ def _build_pydeck_dynamic_from_df(
         pickable=True,
     )
 
-    # Point courant
     layer_current = pdk.Layer(
         "ScatterplotLayer",
         data=df_points[df_points["is_current"]],
@@ -362,23 +361,22 @@ def _build_pydeck_dynamic_from_df(
         stroked=True,
         get_line_color=[0, 0, 0, 200],
         line_width_min_pixels=1,
-        get_fill_color=[220, 20, 60, 230],  # rouge
+        get_fill_color=[220, 20, 60, 230],
         pickable=True,
     )
 
     tooltip = {
-    "html": "{tooltip}",
-    "style": {
-        "backgroundColor": "white",
-        "color": "black",
-        "maxHeight": "300px",
-        "overflowY": "auto",
-        "padding": "6px",
-        "width": "300px",
-        "fontSize": "12px"
+        "html": "{tooltip}",
+        "style": {
+            "backgroundColor": "white",
+            "color": "black",
+            "maxHeight": "300px",
+            "overflowY": "auto",
+            "padding": "6px",
+            "width": "300px",
+            "fontSize": "12px"
+        }
     }
-    }
-
 
     return pdk.Deck(
         layers=[layer_base, layer_current],
@@ -387,12 +385,7 @@ def _build_pydeck_dynamic_from_df(
         tooltip=tooltip,
     )
 
-# ------- Fallback Folium sûr (au cas où) -------
 def _fallback_folium_map_from_events(events: list) -> folium.Map:
-    """
-    Crée une carte Folium même si la liste d'événements est vide ou non géocodable.
-    Tente de calculer un centre moyen, sinon Paris.
-    """
     coords = []
     for ev in events or []:
         lieu = (ev.get("lieu") or "").strip()
@@ -408,7 +401,7 @@ def _fallback_folium_map_from_events(events: list) -> folium.Map:
         lon_c = sum(lon for _, lon in coords) / len(coords)
         c = (lat_c, lon_c)
     else:
-        c = (48.8566, 2.3522)  # Paris
+        c = (48.8566, 2.3522)
 
     m = folium.Map(location=c, zoom_start=12, control_scale=True, tiles="OpenStreetMap")
     if coords:
@@ -421,8 +414,31 @@ def _fallback_folium_map_from_events(events: list) -> folium.Map:
     return m
 
 # ====================================
+# ✅ AJOUT VIDOCQ : utilitaire conversion procédures
+# ====================================
+
+def ensure_procedure_jsons(files, work_dir):
+    """
+    Vérifie pour chaque fichier procédure s'il existe un JSON correspondant.
+    Sinon, le génère automatiquement avec extraction_procedure().
+    """
+    json_paths = []
+    for f in files:
+        base_name, ext = os.path.splitext(f.name)
+        json_path = os.path.join(work_dir, f"{base_name}.json")
+        if not os.path.exists(json_path):
+            tmp_path = os.path.join(work_dir, f.name)
+            with open(tmp_path, "wb") as tmp:
+                tmp.write(f.read())
+            extraction_procedure(tmp_path, out_json=json_path)
+        json_paths.append(json_path)
+    return json_paths
+
+
+# ====================================
 # VUES
 # ====================================
+
 
 # 🔍 GRAPHE DES CONCEPTS
 if view_mode == "Graphe des concepts":
@@ -1045,4 +1061,87 @@ elif view_mode == "Carte":
             with col_graph:
                 st.info("Veuillez charger des documents puis cliquer sur 🚀 **Lancer la vue**.")
 
-# test
+
+
+# Vue extractions informations procédure
+elif view_mode == "Extractions informations procédure":
+    st.title("🧾 Extractions d’informations – Procédures policières")
+    st.markdown(
+        """
+        Cette vue permet d’extraire automatiquement les informations clés des procédures
+        (`.odt`, `.doc`, `.docx`, `.txt`), de visualiser le fichier JSON obtenu, de l’éditer et de le sauvegarder.
+        Vous pouvez également télécharger le JSON pour le réutiliser ailleurs.
+        """
+    )
+
+    uploaded_files = st.file_uploader(
+        "📂 Importez une ou plusieurs procédures",
+        type=["odt", "doc", "docx", "txt"],
+        accept_multiple_files=True,
+        key="proc_files",
+    )
+
+    if not uploaded_files:
+        st.info("💡 Importez au moins un fichier de procédure pour commencer.")
+    else:
+        # Dossier temporaire de travail
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for file in uploaded_files:
+                st.markdown(f"---\n### 🗂️ Fichier : `{file.name}`")
+
+                # Sauvegarde temporaire du fichier importé
+                suffix = os.path.splitext(file.name)[1].lower()
+                tmp_path = os.path.join(tmpdir, file.name)
+                with open(tmp_path, "wb") as tmpf:
+                    tmpf.write(file.read())
+
+                # Extraction automatique
+                with st.spinner("Extraction des informations en cours..."):
+                    try:
+                        data = extraction_procedure(tmp_path)
+                        json_str = json.dumps(data, ensure_ascii=False, indent=2)
+                        st.success("✅ Extraction terminée avec succès.")
+                    except Exception as e:
+                        st.error(f"Erreur lors de l’extraction : {e}")
+                        continue
+
+                # Éditeur JSON
+                st.markdown("#### ✏️ Éditez le contenu JSON si nécessaire :")
+                edited_json = st.text_area(
+                    label="JSON extrait",
+                    value=json_str,
+                    height=500,
+                    key=f"json_edit_{file.name}",
+                )
+
+                # Boutons de sauvegarde et téléchargement
+                col1b, col2b = st.columns([1, 2])
+                with col1b:
+                    if st.button(f"💾 Sauvegarder le JSON ({file.name})", key=f"save_{file.name}"):
+                        try:
+                            json_data = json.loads(edited_json)
+                            json_out_path = os.path.join(tmpdir, f"{os.path.splitext(file.name)[0]}.json")
+                            with open(json_out_path, "w", encoding="utf8") as f:
+                                json.dump(json_data, f, ensure_ascii=False, indent=2)
+                            st.success(f"✅ Sauvegardé : {json_out_path}")
+                        except Exception as e:
+                            st.error(f"❌ Erreur lors de la sauvegarde : {e}")
+
+                with col2b:
+                    st.download_button(
+                        label=f"⬇️ Télécharger `{file.name}.json`",
+                        data=edited_json.encode("utf8"),
+                        file_name=f"{os.path.splitext(file.name)[0]}.json",
+                        mime="application/json",
+                        key=f"dl_{file.name}",
+                    )
+
+                # Vue synthétique
+                st.markdown("#### 🔍 Aperçu synthétique")
+                try:
+                    st.json(json.loads(edited_json))
+                except Exception:
+                    st.warning("⚠️ Le contenu JSON est invalide – impossible d’afficher l’aperçu.")
+
+            st.markdown("---")
+            st.success("🎯 Traitement terminé pour tous les fichiers.")
